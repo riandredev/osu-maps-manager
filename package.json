@@ -2,6 +2,7 @@
   "name": "@riandredev/osu-maps",
   "version": "1.0.0",
   "description": "A typed CLI for tracking and restoring osu! beatmap collections",
+  "author": "Riandre",
   "private": true,
   "type": "module",
   "main": "dist/electron-main.js",
@@ -14,6 +15,7 @@
     "dev": "tsx src/cli.ts",
     "gui": "pnpm build && electron .",
     "gui:dev": "pnpm build && electron .",
+    "package:win": "pnpm build && electron-builder --win nsis --publish never",
     "sync": "tsx src/cli.ts sync-collection",
     "restore": "tsx src/cli.ts restore",
     "verify": "tsx src/cli.ts verify",
@@ -45,6 +47,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "electron": "^38.2.2",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.37.0",
     "sharp": "^0.34.4",
     "tsx": "^4.20.6",
@@ -52,5 +55,33 @@
     "typescript-eslint": "^8.46.1",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "dev.riandre.osumaps",
+    "productName": "osu! Maps Manager",
+    "artifactName": "osu-maps-manager-${version}-setup.${ext}",
+    "files": [
+      "dist/**/*",
+      "ui-dist/**/*",
+      "assets/**/*",
+      "beatmaps.json",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/realm/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/app-icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

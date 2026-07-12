@@ -47,13 +47,18 @@ nav {
   display: grid;
   gap: 6px;
 }
-nav div {
+nav button {
   padding: 11px 12px;
+  border: 0;
   border-radius: 8px;
   display: flex;
   gap: 10px;
   align-items: center;
   color: #a9abb5;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 .nav-active {
   background: #2b2331;
@@ -121,6 +126,66 @@ header span {
   grid-template-columns: 0.8fr 1.2fr;
   gap: 16px;
 }
+.feature-card {
+  min-height: 210px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.feature-card > svg {
+  color: #e982b5;
+  font-size: 30px;
+}
+.feature-card > span {
+  color: #a9acb7;
+  line-height: 1.5;
+}
+.feature-card > button {
+  margin-top: auto;
+}
+.page-card {
+  min-height: 300px;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+.section-heading > div {
+  display: grid;
+  gap: 6px;
+}
+.section-heading > div > span {
+  color: #a9acb7;
+}
+.section-heading > svg {
+  color: #e982b5;
+  font-size: 28px;
+}
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.collection-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid #343640;
+  border-radius: 8px;
+  background: #191a20;
+}
+.collection-item > div {
+  display: grid;
+  gap: 3px;
+}
+.collection-item > div > span:last-child {
+  color: #9396a1;
+}
 .card {
   padding: 20px !important;
 }
@@ -155,6 +220,9 @@ header span {
   grid-template-columns: 2fr 1fr;
   gap: 12px;
   margin-top: 20px;
+}
+.form-grid.three {
+  grid-template-columns: 1fr 1fr 160px;
 }
 .checks {
   display: flex;
@@ -224,6 +292,10 @@ code {
     padding: 22px;
   }
   .columns {
+    grid-template-columns: 1fr;
+  }
+  .collection-grid,
+  .form-grid.three {
     grid-template-columns: 1fr;
   }
   .metrics {

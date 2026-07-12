@@ -21,8 +21,10 @@ export function renderTable(manifest: Manifest): string {
   ].join('\n');
 }
 
-export async function updateReadme(manifest: Manifest): Promise<void> {
-  const file = path.join(root, 'README.md');
+export async function updateReadme(
+  manifest: Manifest,
+  file = path.join(root, 'README.md'),
+): Promise<void> {
   const current = await import('node:fs/promises').then((fs) => fs.readFile(file, 'utf8'));
   const begin = current.indexOf(start);
   const finish = current.indexOf(end);

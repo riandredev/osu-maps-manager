@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DownloadManager } from './download.js';
 
 const archive = Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
@@ -15,6 +15,9 @@ afterEach(async () => {
       server!.close((error) => (error ? reject(error) : resolve())),
     );
   if (directory) await rm(directory, { recursive: true, force: true });
+  server = undefined;
+  directory = undefined;
+  vi.unstubAllGlobals();
 });
 
 describe('download manager', () => {
@@ -55,5 +58,48 @@ describe('download manager', () => {
       states.push(event.state),
     );
     expect(states).toContain('skipped');
+  });
+
+  it('falls back when providers return fetching metadata or invalid files', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL | RequestInfo) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes('rai.moe')) {
+          return Response.json({
+            status: 'fetching',
+            message: 'Beatmap is being fetched from upstream.',
+          });
+        }
+        if (url.includes('nerinyan.moe')) return new Response('not an archive');
+        return new Response(archive, {
+          headers: { 'content-length': String(archive.length) },
+        });
+      }),
+    );
+    directory = await mkdtemp(path.join(tmpdir(), 'osu-maps-fallback-'));
+    const map = {
+      id: 43,
+      beatmapId: null,
+      artist: 'Artist',
+      title: 'Title',
+      collections: ['repo'],
+      notes: '',
+    };
+
+    const files = await new DownloadManager().downloadAll(
+      [map],
+      directory,
+      1,
+      'auto',
+      () => undefined,
+    );
+
+    expect(files).toHaveLength(1);
+    expect(calls.some((url) => url.includes('rai.moe'))).toBe(true);
+    expect(calls.some((url) => url.includes('nerinyan.moe'))).toBe(true);
+    expect(calls.some((url) => url.includes('catboy.best'))).toBe(true);
   });
 });

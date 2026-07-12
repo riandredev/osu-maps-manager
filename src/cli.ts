@@ -72,7 +72,7 @@ program
 program
   .command('restore')
   .description('Download missing beatmaps from a configured mirror and import them into lazer')
-  .option('--provider <url>', 'mirror API base URL', 'https://api.rai.moe')
+  .option('--provider <url>', 'mirror API base URL or auto fallback', 'auto')
   .option('--concurrency <number>', 'concurrent downloads', '3')
   .option('--all', 'download all tracked maps, not only missing maps')
   .option('--no-import', 'download without importing into lazer')

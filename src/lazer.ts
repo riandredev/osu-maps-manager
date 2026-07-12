@@ -5,6 +5,13 @@ import type { Beatmapset } from './schema.js';
 
 type Dynamic = Record<string, any>;
 
+export interface LazerCollection {
+  name: string;
+  difficultyCount: number;
+  beatmapsetCount: number;
+  maps: Beatmapset[];
+}
+
 export function defaultRealmPath(): string {
   if (process.env.OSU_REALM_PATH) return process.env.OSU_REALM_PATH;
   if (process.platform === 'win32')
@@ -18,6 +25,17 @@ export async function readLazerCollection(
   collectionName: string,
   database = defaultRealmPath(),
 ): Promise<Beatmapset[]> {
+  const collections = await readLazerCollections(database);
+  const collection = collections.find(
+    (item) => item.name.toLocaleLowerCase() === collectionName.toLocaleLowerCase(),
+  );
+  if (!collection) throw new Error(`Collection "${collectionName}" was not found in osu!lazer.`);
+  return collection.maps;
+}
+
+export async function readLazerCollections(
+  database = defaultRealmPath(),
+): Promise<LazerCollection[]> {
   if (isOsuRunning()) {
     throw new Error(
       'osu!lazer is running. Close osu! so its collection database can be read safely, then retry.',
@@ -33,27 +51,37 @@ export async function readLazerCollection(
     });
   }
   try {
-    const collection = [...realm.objects<Dynamic>('BeatmapCollection')].find(
-      (item) => String(item.Name).toLocaleLowerCase() === collectionName.toLocaleLowerCase(),
-    );
-    if (!collection) throw new Error(`Collection "${collectionName}" was not found in osu!lazer.`);
-    const wanted = new Set<string>([...collection.BeatmapMD5Hashes].map(String));
-    const sets = new Map<number, Beatmapset>();
+    const beatmaps = new Map<string, Beatmapset>();
     for (const beatmap of realm.objects<Dynamic>('Beatmap')) {
-      if (!wanted.has(String(beatmap.MD5Hash))) continue;
       const setId = Number(beatmap.BeatmapSet?.OnlineID ?? -1);
       if (setId <= 0) continue;
       const metadata = beatmap.Metadata;
-      sets.set(setId, {
+      beatmaps.set(String(beatmap.MD5Hash), {
         id: setId,
         beatmapId: Number(beatmap.OnlineID) > 0 ? Number(beatmap.OnlineID) : null,
         artist: String(metadata?.Artist ?? 'Unknown artist'),
         title: String(metadata?.Title ?? 'Unknown title'),
-        collections: [collectionName],
+        collections: [],
         notes: '',
       });
     }
-    return [...sets.values()];
+    return [...realm.objects<Dynamic>('BeatmapCollection')]
+      .map((collection) => {
+        const hashes = [...collection.BeatmapMD5Hashes].map(String);
+        const sets = new Map<number, Beatmapset>();
+        const name = String(collection.Name);
+        for (const hash of hashes) {
+          const map = beatmaps.get(hash);
+          if (map) sets.set(map.id, { ...map, collections: [name] });
+        }
+        return {
+          name,
+          difficultyCount: hashes.length,
+          beatmapsetCount: sets.size,
+          maps: [...sets.values()],
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   } finally {
     realm.close();
   }

@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('osuMaps', {
   status: () => ipcRenderer.invoke('maps:status'),
-  sync: (push: boolean) => ipcRenderer.invoke('maps:sync', push),
+  sync: (options: unknown) => ipcRenderer.invoke('maps:sync', options),
+  selectLibrary: () => ipcRenderer.invoke('maps:select-library'),
   restore: (options: unknown) => ipcRenderer.invoke('maps:restore', options),
   cancel: () => ipcRenderer.invoke('maps:cancel'),
   onProgress: (callback: (value: unknown) => void) => {

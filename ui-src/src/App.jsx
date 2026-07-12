@@ -4,8 +4,10 @@ import {
   Button,
   Card,
   Checkbox,
+  Dropdown,
   Field,
   Input,
+  Option,
   ProgressBar,
   Spinner,
   Text,
@@ -18,23 +20,31 @@ import {
   CloudArrowUp24Regular,
   Database24Regular,
   Dismiss24Regular,
+  FolderOpen24Regular,
   MusicNote224Regular,
   Play24Filled,
+  Settings24Regular,
 } from '@fluentui/react-icons';
 
 const bridge = window.osuMaps;
 
 export default function App() {
+  const [page, setPage] = useState('library');
   const [status, setStatus] = useState({
     total: null,
     installed: null,
     missing: null,
     scanError: null,
+    localCollections: [],
+    remoteCollections: [],
+    libraryPath: '',
   });
+  const [selectedLocal, setSelectedLocal] = useState([]);
+  const [remoteCollection, setRemoteCollection] = useState('all');
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState('Ready');
   const [events, setEvents] = useState(new Map());
-  const [provider, setProvider] = useState('https://api.rai.moe');
+  const [provider, setProvider] = useState('auto');
   const [concurrency, setConcurrency] = useState('3');
   const [onlyMissing, setOnlyMissing] = useState(true);
   const [importAfter, setImportAfter] = useState(true);
@@ -53,7 +63,11 @@ export default function App() {
   async function refresh() {
     if (!bridge) return;
     try {
-      setStatus(await bridge.status());
+      const next = await bridge.status();
+      setStatus(next);
+      setSelectedLocal((current) =>
+        current.length ? current : next.localCollections.map((collection) => collection.name),
+      );
     } catch (error) {
       setMessage(String(error));
     }
@@ -78,19 +92,22 @@ export default function App() {
         <Dismiss24Regular />
         <Title2>Desktop bridge failed to load</Title2>
         <Text>
-          The Electron preload script is missing. Run <code>git pull</code>,{' '}
-          <code>pnpm install</code>, then <code>pnpm gui</code>.
+          Run <code>git pull</code>, <code>pnpm install</code>, then <code>pnpm gui</code>.
         </Text>
       </div>
     );
   }
 
   async function sync(push) {
+    if (!selectedLocal.length) {
+      setMessage('Select at least one local collection first.');
+      return;
+    }
     setBusy(true);
-    setStage('Syncing collection');
+    setStage('Syncing collections');
     setMessage('');
     try {
-      const result = await bridge.sync(push);
+      const result = await bridge.sync({ names: selectedLocal, push });
       setMessage(`Synced ${result.synced} maps; added ${result.added}.`);
       await refresh();
     } catch (error) {
@@ -110,6 +127,7 @@ export default function App() {
       const result = await bridge.restore({
         provider,
         concurrency: Number(concurrency),
+        collection: remoteCollection === 'all' ? undefined : remoteCollection,
         onlyMissing,
         importAfter,
       });
@@ -126,6 +144,12 @@ export default function App() {
     }
   }
 
+  function toggleCollection(name, checked) {
+    setSelectedLocal((current) =>
+      checked ? [...new Set([...current, name])] : current.filter((item) => item !== name),
+    );
+  }
+
   return (
     <div className="shell">
       <aside>
@@ -137,14 +161,34 @@ export default function App() {
           </div>
         </div>
         <nav>
-          <div className="nav-active">
-            <Database24Regular />
+          <NavButton
+            active={page === 'library'}
+            icon={<Database24Regular />}
+            onClick={() => setPage('library')}
+          >
             Library
-          </div>
-          <div>
-            <ArrowDownload24Regular />
+          </NavButton>
+          <NavButton
+            active={page === 'collections'}
+            icon={<MusicNote224Regular />}
+            onClick={() => setPage('collections')}
+          >
+            Collections
+          </NavButton>
+          <NavButton
+            active={page === 'restore'}
+            icon={<ArrowDownload24Regular />}
+            onClick={() => setPage('restore')}
+          >
             Restore
-          </div>
+          </NavButton>
+          <NavButton
+            active={page === 'settings'}
+            icon={<Settings24Regular />}
+            onClick={() => setPage('settings')}
+          >
+            Settings
+          </NavButton>
         </nav>
         <Text className="aside-note" size={200}>
           Close osu!lazer before scanning or syncing. The manager launches it for import.
@@ -153,8 +197,8 @@ export default function App() {
       <main>
         <header>
           <div>
-            <Title1>Beatmap library</Title1>
-            <Text>Keep your collection portable and restore it without opening browser tabs.</Text>
+            <Title1>{pageTitle(page)}</Title1>
+            <Text>{pageDescription(page)}</Text>
           </div>
           <Button icon={<ArrowClockwise24Regular />} onClick={refresh}>
             Refresh
@@ -162,134 +206,313 @@ export default function App() {
         </header>
         {status.scanError && <div className="notice">{status.scanError}</div>}
         {message && <div className="notice accent">{message}</div>}
-        <section className="metrics">
-          <Metric label="Tracked" value={status.total} />
-          <Metric label="Installed" value={status.installed} />
-          <Metric label="Missing" value={status.missing} />
-          <Metric label="Current task" value={busy ? stage : 'Idle'} compact />
-        </section>
-        <div className="columns">
-          <Card className="card">
-            <div className="card-title">
-              <div>
-                <Title2>Sync collection</Title2>
-                <Text>
-                  Pull the in-game <code>repo</code> collection into this repository.
-                </Text>
-              </div>
-              <CloudArrowUp24Regular />
-            </div>
-            <div className="button-row">
-              <Button disabled={busy} onClick={() => sync(false)}>
-                Sync locally
-              </Button>
-              <Button appearance="primary" disabled={busy} onClick={() => sync(true)}>
-                Sync and push
-              </Button>
-            </div>
-          </Card>
-          <Card className="card restore-card">
-            <div className="card-title">
-              <div>
-                <Title2>Restore missing maps</Title2>
-                <Text>Download validated archives and import them into lazer.</Text>
-              </div>
-              <MusicNote224Regular />
-            </div>
-            <div className="form-grid">
-              <Field label="Mirror provider">
-                <Input value={provider} onChange={(_, d) => setProvider(d.value)} />
-              </Field>
-              <Field label="Concurrent downloads">
-                <Input
-                  type="number"
-                  min="1"
-                  max="8"
-                  value={concurrency}
-                  onChange={(_, d) => setConcurrency(d.value)}
-                />
-              </Field>
-            </div>
-            <div className="checks">
-              <Checkbox
-                checked={onlyMissing}
-                onChange={(_, d) => setOnlyMissing(Boolean(d.checked))}
-                label="Only missing maps"
-              />
-              <Checkbox
-                checked={importAfter}
-                onChange={(_, d) => setImportAfter(Boolean(d.checked))}
-                label="Import after download"
-              />
-            </div>
-            <div className="button-row">
-              <Button icon={<Dismiss24Regular />} disabled={!busy} onClick={() => bridge.cancel()}>
-                Cancel
-              </Button>
-              <Button
-                appearance="primary"
-                icon={<Play24Filled />}
-                disabled={busy}
-                onClick={restore}
-              >
-                Download and import
-              </Button>
-            </div>
-          </Card>
-        </div>
-        <Card className="activity-card">
-          <div className="activity-head">
-            <div>
-              <Title2>Activity</Title2>
-              <Text>{busy ? stage : 'Download and import progress appears here.'}</Text>
-            </div>
-            {busy && <Spinner size="tiny" />}
-          </div>
-          <ProgressBar value={progress} />
-          <div className="event-list">
-            {events.size === 0 ? (
-              <div className="empty">No active downloads</div>
-            ) : (
-              [...events.values()].map((event) => (
-                <div className="event" key={event.id}>
-                  <div>
-                    <Text weight="semibold">
-                      {event.artist} — {event.title}
-                    </Text>
-                    <Text size={200}>
-                      Beatmapset {event.id}
-                      {event.error ? ` · ${event.error}` : ''}
-                    </Text>
-                  </div>
-                  <Badge
-                    appearance="tint"
-                    color={
-                      event.state === 'failed'
-                        ? 'danger'
-                        : event.state === 'complete'
-                          ? 'success'
-                          : 'informative'
-                    }
-                  >
-                    {event.state}
-                  </Badge>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+        {page === 'library' && <LibraryPage status={status} busy={busy} setPage={setPage} />}
+        {page === 'collections' && (
+          <CollectionsPage
+            collections={status.localCollections}
+            selected={selectedLocal}
+            busy={busy}
+            toggle={toggleCollection}
+            sync={sync}
+          />
+        )}
+        {page === 'restore' && (
+          <RestorePage
+            busy={busy}
+            stage={stage}
+            events={events}
+            progress={progress}
+            provider={provider}
+            setProvider={setProvider}
+            concurrency={concurrency}
+            setConcurrency={setConcurrency}
+            onlyMissing={onlyMissing}
+            setOnlyMissing={setOnlyMissing}
+            importAfter={importAfter}
+            setImportAfter={setImportAfter}
+            remoteCollections={status.remoteCollections}
+            remoteCollection={remoteCollection}
+            setRemoteCollection={setRemoteCollection}
+            restore={restore}
+          />
+        )}
+        {page === 'settings' && <SettingsPage status={status} refresh={refresh} />}
       </main>
     </div>
   );
 }
 
-function Metric({ label, value, compact = false }) {
+function LibraryPage({ status, busy, setPage }) {
+  return (
+    <>
+      <section className="metrics">
+        <Metric label="Tracked" value={status.total} />
+        <Metric label="Installed" value={status.installed} />
+        <Metric label="Missing" value={status.missing} />
+        <Metric label="Collections" value={status.remoteCollections.length} />
+      </section>
+      <div className="columns">
+        <Card className="card feature-card">
+          <CloudArrowUp24Regular />
+          <Title2>Sync game collections</Title2>
+          <Text>
+            Choose one or more collections detected in lazer and store their membership remotely.
+          </Text>
+          <Button appearance="primary" disabled={busy} onClick={() => setPage('collections')}>
+            Manage collections
+          </Button>
+        </Card>
+        <Card className="card feature-card">
+          <ArrowDownload24Regular />
+          <Title2>Restore your library</Title2>
+          <Text>
+            Restore all maps or select a remote collection, with validated provider fallback.
+          </Text>
+          <Button appearance="primary" disabled={busy} onClick={() => setPage('restore')}>
+            Open restore
+          </Button>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function CollectionsPage({ collections, selected, busy, toggle, sync }) {
+  return (
+    <Card className="card page-card">
+      <div className="section-heading">
+        <div>
+          <Title2>Detected in osu!lazer</Title2>
+          <Text>Select collections to sync independently.</Text>
+        </div>
+        <Badge appearance="tint">{collections.length} found</Badge>
+      </div>
+      <div className="collection-grid">
+        {collections.length ? (
+          collections.map((collection) => (
+            <label className="collection-item" key={collection.name}>
+              <Checkbox
+                checked={selected.includes(collection.name)}
+                onChange={(_, data) => toggle(collection.name, Boolean(data.checked))}
+              />
+              <div>
+                <Text weight="semibold">{collection.name}</Text>
+                <Text size={200}>
+                  {collection.beatmapsetCount} beatmapsets · {collection.difficultyCount}{' '}
+                  difficulties
+                </Text>
+              </div>
+            </label>
+          ))
+        ) : (
+          <div className="empty">No collections detected. Close osu!lazer and refresh.</div>
+        )}
+      </div>
+      <div className="button-row">
+        <Button disabled={busy || !selected.length} onClick={() => sync(false)}>
+          Sync locally
+        </Button>
+        <Button appearance="primary" disabled={busy || !selected.length} onClick={() => sync(true)}>
+          Sync and push
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function RestorePage(props) {
+  return (
+    <>
+      <Card className="card page-card">
+        <div className="section-heading">
+          <div>
+            <Title2>Restore options</Title2>
+            <Text>Auto provider tries rai.moe, Nerinyan, then Catboy with archive validation.</Text>
+          </div>
+          <Play24Filled />
+        </div>
+        <div className="form-grid three">
+          <Field label="Remote collection">
+            <Dropdown
+              value={props.remoteCollection === 'all' ? 'All collections' : props.remoteCollection}
+              selectedOptions={[props.remoteCollection]}
+              onOptionSelect={(_, data) => props.setRemoteCollection(data.optionValue)}
+            >
+              <Option value="all">All collections</Option>
+              {props.remoteCollections.map((name) => (
+                <Option key={name} value={name}>
+                  {name}
+                </Option>
+              ))}
+            </Dropdown>
+          </Field>
+          <Field label="Download provider">
+            <Dropdown
+              value={providerLabel(props.provider)}
+              selectedOptions={[props.provider]}
+              onOptionSelect={(_, data) => props.setProvider(data.optionValue)}
+            >
+              <Option value="auto">Auto fallback</Option>
+              <Option value="https://api.rai.moe">rai.moe only</Option>
+              <Option value="https://api.nerinyan.moe">Nerinyan only</Option>
+              <Option value="https://catboy.best">Catboy only</Option>
+            </Dropdown>
+          </Field>
+          <Field label="Concurrent downloads">
+            <Input
+              type="number"
+              min="1"
+              max="8"
+              value={props.concurrency}
+              onChange={(_, data) => props.setConcurrency(data.value)}
+            />
+          </Field>
+        </div>
+        <div className="checks">
+          <Checkbox
+            checked={props.onlyMissing}
+            onChange={(_, data) => props.setOnlyMissing(Boolean(data.checked))}
+            label="Only missing maps"
+          />
+          <Checkbox
+            checked={props.importAfter}
+            onChange={(_, data) => props.setImportAfter(Boolean(data.checked))}
+            label="Import after download"
+          />
+        </div>
+        <div className="button-row">
+          <Button
+            icon={<Dismiss24Regular />}
+            disabled={!props.busy}
+            onClick={() => bridge.cancel()}
+          >
+            Cancel
+          </Button>
+          <Button
+            appearance="primary"
+            icon={<Play24Filled />}
+            disabled={props.busy}
+            onClick={props.restore}
+          >
+            Download and import
+          </Button>
+        </div>
+      </Card>
+      <Card className="activity-card">
+        <div className="activity-head">
+          <div>
+            <Title2>Activity</Title2>
+            <Text>{props.busy ? props.stage : 'Download and import progress appears here.'}</Text>
+          </div>
+          {props.busy && <Spinner size="tiny" />}
+        </div>
+        <ProgressBar value={props.progress} />
+        <div className="event-list">
+          {props.events.size === 0 ? (
+            <div className="empty">No active downloads</div>
+          ) : (
+            [...props.events.values()].map((event) => (
+              <div className="event" key={event.id}>
+                <div>
+                  <Text weight="semibold">
+                    {event.artist} — {event.title}
+                  </Text>
+                  <Text size={200}>
+                    Beatmapset {event.id}
+                    {event.error ? ` · ${event.error}` : ''}
+                  </Text>
+                </div>
+                <Badge
+                  appearance="tint"
+                  color={
+                    event.state === 'failed'
+                      ? 'danger'
+                      : event.state === 'complete'
+                        ? 'success'
+                        : 'informative'
+                  }
+                >
+                  {event.state}
+                </Badge>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+    </>
+  );
+}
+
+function SettingsPage({ status, refresh }) {
+  async function choose() {
+    const selected = await bridge.selectLibrary();
+    if (selected) await refresh();
+  }
+  return (
+    <Card className="card page-card">
+      <div className="section-heading">
+        <div>
+          <Title2>Library storage</Title2>
+          <Text>
+            The installed app keeps writable data outside its installation directory. Choose a
+            cloned Git repository to enable Sync and push.
+          </Text>
+        </div>
+        <FolderOpen24Regular />
+      </div>
+      <Field label="Current library folder">
+        <Input readOnly value={status.libraryPath || 'Loading…'} />
+      </Field>
+      <div className="button-row">
+        <Button appearance="primary" icon={<FolderOpen24Regular />} onClick={choose}>
+          Choose folder
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function Metric({ label, value }) {
   return (
     <Card className="metric">
       <Text size={200}>{label}</Text>
-      <Text className={compact ? 'metric-compact' : 'metric-value'} weight="semibold">
+      <Text className="metric-value" weight="semibold">
         {value ?? '—'}
       </Text>
     </Card>
+  );
+}
+function NavButton({ active, icon, children, onClick }) {
+  return (
+    <button className={active ? 'nav-active' : ''} onClick={onClick}>
+      {icon}
+      {children}
+    </button>
+  );
+}
+function pageTitle(page) {
+  return {
+    library: 'Beatmap library',
+    collections: 'Collections',
+    restore: 'Restore',
+    settings: 'Settings',
+  }[page];
+}
+function pageDescription(page) {
+  return {
+    library: 'A portable overview of your tracked beatmaps.',
+    collections: 'Detect and sync multiple lazer collections independently.',
+    restore: 'Download all maps or restore one remote collection.',
+    settings: 'Configure writable library storage and repository integration.',
+  }[page];
+}
+function providerLabel(provider) {
+  return (
+    {
+      auto: 'Auto fallback',
+      'https://api.rai.moe': 'rai.moe only',
+      'https://api.nerinyan.moe': 'Nerinyan only',
+      'https://catboy.best': 'Catboy only',
+    }[provider] || provider
   );
 }

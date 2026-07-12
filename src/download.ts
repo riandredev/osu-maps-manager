@@ -6,7 +6,8 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Beatmapset } from './schema.js';
 
-export type DownloadState = 'queued' | 'downloading' | 'complete' | 'skipped' | 'failed';
+export type DownloadState =
+  'queued' | 'resolving' | 'downloading' | 'complete' | 'skipped' | 'failed';
 export interface DownloadProgress {
   id: number;
   artist: string;
@@ -21,6 +22,7 @@ export interface DownloadProgress {
 
 interface SignedDownload {
   url: string;
+  baseUrl: string;
   filename: string;
   size: number;
 }
@@ -66,7 +68,8 @@ export class DownloadManager {
     let lastError: unknown;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const signed = await this.getSignedDownload(map.id, providerBase);
+        onProgress({ ...base, state: 'resolving', received: 0, total: null, attempt });
+        const signed = await this.resolveDownload(map, providerBase, attempt);
         const filename = sanitizeFilename(
           signed.filename || `${map.id} ${map.artist} - ${map.title}.osz`,
         );
@@ -87,8 +90,9 @@ export class DownloadManager {
         }
         const partial = `${destination}.part`;
         await rm(partial, { force: true });
-        const response = await fetch(new URL(signed.url, providerBase), {
-          signal: this.controller.signal,
+        const response = await fetch(new URL(signed.url, signed.baseUrl), {
+          signal: this.requestSignal(120_000),
+          headers: { 'user-agent': 'osu-maps-manager/1.0' },
         });
         if (!response.ok || !response.body)
           throw new Error(`Download returned HTTP ${response.status}`);
@@ -130,15 +134,58 @@ export class DownloadManager {
     return null;
   }
 
-  private async getSignedDownload(setId: number, providerBase: string): Promise<SignedDownload> {
-    const response = await fetch(new URL(`/beatmaps/${setId}/download`, providerBase), {
-      signal: this.controller.signal,
+  private async resolveDownload(
+    map: Beatmapset,
+    provider: string,
+    attempt: number,
+  ): Promise<SignedDownload> {
+    if (provider === 'auto') {
+      if (attempt === 1) return this.getRaiDownload(map);
+      const baseUrl = attempt === 2 ? 'https://api.nerinyan.moe' : 'https://catboy.best';
+      return {
+        url: `/d/${map.id}`,
+        baseUrl,
+        filename: `${map.id} ${map.artist} - ${map.title}.osz`,
+        size: 0,
+      };
+    }
+    if (provider.includes('nerinyan.moe') || provider.includes('catboy.best')) {
+      return {
+        url: `/d/${map.id}`,
+        baseUrl: provider,
+        filename: `${map.id} ${map.artist} - ${map.title}.osz`,
+        size: 0,
+      };
+    }
+    return this.getRaiDownload(map, provider);
+  }
+
+  private async getRaiDownload(
+    map: Beatmapset,
+    providerBase = 'https://api.rai.moe',
+  ): Promise<SignedDownload> {
+    const response = await fetch(new URL(`/beatmaps/${map.id}/download`, providerBase), {
+      signal: this.requestSignal(20_000),
     });
     if (!response.ok) throw new Error(`Mirror metadata returned HTTP ${response.status}`);
-    const value = (await response.json()) as Partial<SignedDownload>;
-    if (!value.url || !value.filename)
-      throw new Error('Mirror returned an invalid download response');
-    return { url: value.url, filename: value.filename, size: Number(value.size) || 0 };
+    const value = (await response.json()) as Partial<SignedDownload> & {
+      status?: string;
+      message?: string;
+    };
+    if (value.status === 'fetching') {
+      throw new Error(value.message || 'Mirror is still fetching this beatmap');
+    }
+    if (!value.url || !value.filename) throw new Error('Mirror returned invalid metadata');
+    return {
+      url: value.url,
+      baseUrl: providerBase,
+      filename: value.filename,
+      size: Number(value.size) || 0,
+    };
+  }
+
+  private requestSignal(timeout: number): AbortSignal {
+    return AbortSignal.any([this.controller.signal, AbortSignal.timeout(timeout)]);
   }
 }
 

@@ -1,16 +1,19 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
 import { commitAndPush } from './git.js';
 import { importArchives } from './importer.js';
-import { readInstalledSetIds, readLazerCollection } from './lazer.js';
-import { mergeBeatmapsets, readManifest, root, writeManifest } from './manifest.js';
+import { readInstalledSetIds, readLazerCollections } from './lazer.js';
+import { manifestPath, mergeBeatmapsets, readManifest, root, writeManifest } from './manifest.js';
 import { updateReadme } from './readme.js';
 
 let window: BrowserWindow | null = null;
 let manager: DownloadManager | null = null;
+let libraryRoot = root;
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  libraryRoot = await initialiseLibrary();
   app.setAppUserModelId('dev.riandre.osuMaps');
   Menu.setApplicationMenu(null);
   window = new BrowserWindow({
@@ -53,11 +56,13 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('maps:status', async () => {
-  const manifest = await readManifest();
+  const manifest = await readLibraryManifest();
   let installed: Set<number> | null = null;
+  let localCollections: Awaited<ReturnType<typeof readLazerCollections>> = [];
   let scanError: string | null = null;
   try {
     installed = await readInstalledSetIds();
+    localCollections = await readLazerCollections();
   } catch (error) {
     scanError = message(error);
   }
@@ -68,6 +73,13 @@ ipcMain.handle('maps:status', async () => {
       : null,
     missing: installed ? manifest.beatmapsets.filter((map) => !installed.has(map.id)).length : null,
     scanError,
+    libraryPath: libraryRoot,
+    remoteCollections: [...new Set(manifest.beatmapsets.flatMap((map) => map.collections))].sort(),
+    localCollections: localCollections.map(({ name, difficultyCount, beatmapsetCount }) => ({
+      name,
+      difficultyCount,
+      beatmapsetCount,
+    })),
     maps: manifest.beatmapsets.map((map) => ({
       ...map,
       installed: installed?.has(map.id) ?? null,
@@ -75,14 +87,52 @@ ipcMain.handle('maps:status', async () => {
   };
 });
 
-ipcMain.handle('maps:sync', async (_event, push: boolean) => {
-  const manifest = await readManifest();
-  const maps = await readLazerCollection('repo');
-  const added = mergeBeatmapsets(manifest, maps);
-  await writeManifest(manifest);
-  await updateReadme(manifest);
-  if (push) commitAndPush('Sync osu! collection repo');
-  return { synced: maps.length, added, total: manifest.beatmapsets.length };
+ipcMain.handle(
+  'maps:sync',
+  async (_event, options: { names?: string[]; push?: boolean } | boolean) => {
+    const normalised = typeof options === 'boolean' ? { names: ['repo'], push: options } : options;
+    const names = normalised.names?.length ? normalised.names : ['repo'];
+    const manifest = await readLibraryManifest();
+    const collections = await readLazerCollections();
+    const selected = collections.filter((collection) =>
+      names.some((name) => name.toLocaleLowerCase() === collection.name.toLocaleLowerCase()),
+    );
+    if (selected.length !== names.length) {
+      const found = selected.map((item) => item.name).join(', ') || 'none';
+      throw new Error(`Some selected collections were not found. Found: ${found}.`);
+    }
+    for (const map of manifest.beatmapsets) {
+      map.collections = map.collections.filter(
+        (collection) =>
+          !names.some((name) => name.toLocaleLowerCase() === collection.toLocaleLowerCase()),
+      );
+    }
+    const maps = selected.flatMap((collection) => collection.maps);
+    const added = mergeBeatmapsets(manifest, maps);
+    await writeManifest(manifest, libraryManifestPath());
+    if (await exists(path.join(libraryRoot, 'README.md'))) {
+      await updateReadme(manifest, path.join(libraryRoot, 'README.md'));
+    }
+    if (normalised.push) {
+      if (!(await exists(path.join(libraryRoot, '.git')))) {
+        throw new Error('The selected library folder is not a Git repository, so it cannot push.');
+      }
+      commitAndPush(`Sync osu! collections: ${names.join(', ')}`, libraryRoot);
+    }
+    return { synced: maps.length, added, total: manifest.beatmapsets.length };
+  },
+);
+
+ipcMain.handle('maps:select-library', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Choose beatmap library folder',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  libraryRoot = result.filePaths[0];
+  await ensureLibrary(libraryRoot);
+  await saveSettings({ libraryPath: libraryRoot });
+  return libraryRoot;
 });
 
 ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
@@ -90,11 +140,15 @@ ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
   const options = raw as {
     concurrency?: number;
     provider?: string;
+    collection?: string;
     importAfter?: boolean;
     onlyMissing?: boolean;
   };
-  const manifest = await readManifest();
+  const manifest = await readLibraryManifest();
   let maps = manifest.beatmapsets;
+  if (options.collection) {
+    maps = maps.filter((map) => map.collections.includes(options.collection!));
+  }
   if (options.onlyMissing !== false) {
     const installed = await readInstalledSetIds();
     maps = maps.filter((map) => !installed.has(map.id));
@@ -103,9 +157,9 @@ ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
   try {
     const files = await manager.downloadAll(
       maps,
-      path.join(root, 'downloads'),
+      path.join(libraryRoot, 'downloads'),
       Number(options.concurrency) || 3,
-      options.provider || 'https://api.rai.moe',
+      options.provider || 'auto',
       (progress) => window?.webContents.send('maps:progress', { type: 'download', ...progress }),
     );
     if (options.importAfter !== false && files.length > 0) {
@@ -130,4 +184,52 @@ ipcMain.handle('maps:cancel', () => {
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function libraryManifestPath(): string {
+  return path.join(libraryRoot, 'beatmaps.json');
+}
+
+async function readLibraryManifest() {
+  return readManifest(libraryManifestPath());
+}
+
+async function initialiseLibrary(): Promise<string> {
+  if (!app.isPackaged) return root;
+  const settings = await readSettings();
+  const directory = settings.libraryPath || path.join(app.getPath('userData'), 'library');
+  await ensureLibrary(directory);
+  return directory;
+}
+
+async function ensureLibrary(directory: string): Promise<void> {
+  await mkdir(directory, { recursive: true });
+  const destination = path.join(directory, 'beatmaps.json');
+  if (!(await exists(destination))) await copyFile(manifestPath, destination);
+}
+
+async function readSettings(): Promise<{ libraryPath?: string }> {
+  try {
+    return JSON.parse(await readFile(settingsPath(), 'utf8')) as { libraryPath?: string };
+  } catch {
+    return {};
+  }
+}
+
+async function saveSettings(settings: { libraryPath: string }): Promise<void> {
+  await mkdir(app.getPath('userData'), { recursive: true });
+  await writeFile(settingsPath(), `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+}
+
+function settingsPath(): string {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+
+async function exists(file: string): Promise<boolean> {
+  try {
+    await access(file);
+    return true;
+  } catch {
+    return false;
+  }
 }
