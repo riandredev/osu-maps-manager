@@ -23,13 +23,15 @@ export function renderTable(manifest: Manifest): string {
       const url = `https://osu.ppy.sh/beatmapsets/${map.id}${suffix}`;
       const cover = `<img src="https://assets.ppy.sh/beatmaps/${map.id}/covers/list.jpg" width="96" alt="">`;
       const track = `**[${escapeCell(map.title)}](${url})**<br><sub>${escapeCell(map.artist)} · beatmapset ${map.id}</sub>`;
-      const collections = map.collections.map(collectionBadge).join(' ');
+      const collections = map.collections.length
+        ? map.collections.map((collection) => collectionBadge(collection, 'd94f9d')).join(' ')
+        : collectionBadge('Uncategorised', '6b7280');
       return `| ${cover} | ${track} | ${collections} |`;
     });
   return [
     '## Synced beatmaps',
     '',
-    `${manifest.beatmapsets.length} beatmapsets across ${new Set(manifest.beatmapsets.flatMap((map) => map.collections)).size} collections.`,
+    collectionSummary(manifest),
     '',
     '| Cover | Beatmap | Collections |',
     '| :---: | --- | --- |',
@@ -54,7 +56,12 @@ function escapeCell(value: string): string {
   return value.replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
-function collectionBadge(collection: string): string {
+function collectionBadge(collection: string, colour: string): string {
   const label = encodeURIComponent(collection.replaceAll('-', '--'));
-  return `<img alt="${escapeCell(collection)}" src="https://img.shields.io/badge/${label}-d94f9d?style=flat-square">`;
+  return `<img alt="${escapeCell(collection)}" src="https://img.shields.io/badge/${label}-${colour}?style=flat-square">`;
+}
+
+function collectionSummary(manifest: Manifest): string {
+  const count = new Set(manifest.beatmapsets.flatMap((map) => map.collections)).size;
+  return `${manifest.beatmapsets.length} beatmapsets across ${count} collection${count === 1 ? '' : 's'}.`;
 }

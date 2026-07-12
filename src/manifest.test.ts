@@ -32,6 +32,7 @@ describe('manifest merging', () => {
     expect(renderTable(manifest)).toContain('https://osu.ppy.sh/beatmapsets/10');
     expect(renderTable(manifest)).toContain('https://assets.ppy.sh/beatmaps/10/covers/list.jpg');
     expect(renderTable(manifest)).toContain('img.shields.io/badge/repo-d94f9d');
+    expect(renderTable(manifest)).toContain('1 collection.');
   });
 
   it('renders an empty state without a beatmap heading or table', () => {
