@@ -161,9 +161,10 @@ ipcMain.handle(
       if (!(await exists(path.join(libraryRoot, '.git')))) {
         throw new Error('The selected library folder is not a Git repository, so it cannot push.');
       }
-      commitAndPush(`Sync osu! collections: ${names.join(', ')}`, libraryRoot);
+      const pushResult = commitAndPush(`Sync osu! collections: ${names.join(', ')}`, libraryRoot);
+      return { synced: maps.length, added, total: manifest.beatmapsets.length, pushResult };
     }
-    return { synced: maps.length, added, total: manifest.beatmapsets.length };
+    return { synced: maps.length, added, total: manifest.beatmapsets.length, pushResult: null };
   },
 );
 

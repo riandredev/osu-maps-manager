@@ -3,12 +3,35 @@ import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { root } from './manifest.js';
 
-export function commitAndPush(message: string, cwd = root): void {
+export type PushResult = {
+  branch: string;
+  commit: string;
+  committed: boolean;
+};
+
+export function commitAndPush(message: string, cwd = root): PushResult {
   runGit(['add', 'beatmaps.json', 'README.md'], cwd);
-  const diff = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd });
-  if (diff.status === 0) return;
-  runGit(['commit', '-m', message], cwd);
-  runGit(['push'], cwd);
+  const diff = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd, windowsHide: true });
+  const committed = diff.status !== 0;
+  if (committed) runGit(['commit', '-m', message], cwd);
+
+  // Push even when this sync produced no new diff. Earlier syncs may have
+  // committed locally while the network was unavailable.
+  runGit(['push', '--porcelain'], cwd);
+
+  const branch = requiredGitOutput(['branch', '--show-current'], cwd);
+  const head = requiredGitOutput(['rev-parse', 'HEAD'], cwd);
+  const remoteLine = requiredGitOutput(
+    ['ls-remote', '--heads', 'origin', `refs/heads/${branch}`],
+    cwd,
+  );
+  const remoteHead = remoteLine.split(/\s+/)[0];
+  if (remoteHead !== head) {
+    throw new Error(
+      `Git reported success, but origin/${branch} was not updated to ${head.slice(0, 7)}.`,
+    );
+  }
+  return { branch, commit: head.slice(0, 7), committed };
 }
 
 export function isGitRepository(directory: string): boolean {
@@ -62,7 +85,24 @@ export function cloneOrUpdateRepository(
   return target;
 }
 
-function runGit(args: string[], cwd: string): void {
-  const result = spawnSync('git', args, { cwd, stdio: 'inherit', windowsHide: true });
-  if (result.status !== 0) throw new Error(`git ${args[0]} failed with exit code ${result.status}`);
+function requiredGitOutput(args: string[], cwd: string): string {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
+  if (result.status !== 0) throwGitError(args, result.status, result.stderr, result.stdout);
+  return result.stdout.trim();
+}
+
+function runGit(args: string[], cwd: string): string {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
+  if (result.status !== 0) throwGitError(args, result.status, result.stderr, result.stdout);
+  return `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+}
+
+function throwGitError(
+  args: string[],
+  status: number | null,
+  stderr: string | null | undefined,
+  stdout: string | null | undefined,
+): never {
+  const details = `${stderr ?? ''}\n${stdout ?? ''}`.trim();
+  throw new Error(details || `git ${args[0]} failed with exit code ${status ?? 'unknown'}`);
 }

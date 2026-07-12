@@ -11,8 +11,13 @@ import {
   ProgressBar,
   Spinner,
   Text,
+  Toast,
+  ToastBody,
+  Toaster,
+  ToastTitle,
   Title1,
   Title2,
+  useToastController,
 } from '@fluentui/react-components';
 import {
   ArrowClockwise24Regular,
@@ -27,8 +32,10 @@ import {
 } from '@fluentui/react-icons';
 
 const bridge = window.osuMaps;
+const toasterId = 'osu-maps-toaster';
 
 export default function App() {
+  const { dispatchToast } = useToastController(toasterId);
   const [page, setPage] = useState('library');
   const [status, setStatus] = useState({
     total: null,
@@ -50,7 +57,16 @@ export default function App() {
   const [concurrency, setConcurrency] = useState('3');
   const [onlyMissing, setOnlyMissing] = useState(true);
   const [importAfter, setImportAfter] = useState(true);
-  const [message, setMessage] = useState('');
+
+  function notify(title, body, intent = 'info') {
+    dispatchToast(
+      <Toast>
+        <ToastTitle>{title}</ToastTitle>
+        {body && <ToastBody>{body}</ToastBody>}
+      </Toast>,
+      { intent, timeout: intent === 'error' ? 8000 : 5000 },
+    );
+  }
 
   const completed = useMemo(
     () =>
@@ -70,8 +86,9 @@ export default function App() {
       setSelectedLocal((current) =>
         current.length ? current : next.localCollections.map((collection) => collection.name),
       );
+      if (next.scanError) notify('Could not scan osu!lazer', next.scanError, 'warning');
     } catch (error) {
-      setMessage(errorMessage(error));
+      notify('Refresh failed', errorMessage(error), 'error');
     }
   }
 
@@ -106,18 +123,23 @@ export default function App() {
 
   async function sync(push) {
     if (!selectedLocal.length) {
-      setMessage('Select at least one local collection first.');
+      notify('No collections selected', 'Select at least one local collection first.', 'warning');
       return;
     }
     setBusy(true);
     setStage('Syncing collections');
-    setMessage('');
     try {
       const result = await bridge.sync({ names: selectedLocal, push });
-      setMessage(`Synced ${result.synced} maps; added ${result.added}.`);
+      notify(
+        push ? 'Synced and pushed' : 'Synced locally',
+        push
+          ? `${result.synced} maps synced. origin/${result.pushResult.branch} verified at ${result.pushResult.commit}.`
+          : `${result.synced} maps synced; ${result.added} added.`,
+        'success',
+      );
       await refresh();
     } catch (error) {
-      setMessage(errorMessage(error));
+      notify('Sync failed', errorMessage(error), 'error');
     } finally {
       setBusy(false);
       setStage('Ready');
@@ -128,7 +150,6 @@ export default function App() {
     setBusy(true);
     setEvents(new Map());
     setStage('Downloading beatmaps');
-    setMessage('');
     try {
       const result = await bridge.restore({
         provider,
@@ -137,15 +158,17 @@ export default function App() {
         onlyMissing,
         importAfter,
       });
-      setMessage(
+      notify(
+        result.nothingToDo === 'already-installed' ? 'Everything is installed' : 'Restore complete',
         result.nothingToDo === 'already-installed'
           ? 'Everything in the selected library is already installed.'
-          : `Restore complete: ${result.downloaded} downloaded, ${result.imported} handed to lazer.`,
+          : `${result.downloaded} downloaded; ${result.imported} handed to osu!lazer.`,
+        'success',
       );
       setStage('Complete');
       await refresh();
     } catch (error) {
-      setMessage(errorMessage(error));
+      notify('Restore failed', errorMessage(error), 'error');
       setStage('Stopped');
     } finally {
       setBusy(false);
@@ -160,6 +183,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <Toaster toasterId={toasterId} position="top-end" pauseOnHover />
       <aside>
         <div className="brand">
           <img src="../assets/app-icon.svg" />
@@ -212,8 +236,6 @@ export default function App() {
             Refresh
           </Button>
         </header>
-        {status.scanError && <div className="notice">{status.scanError}</div>}
-        {message && <div className="notice accent">{message}</div>}
         {page === 'library' && <LibraryPage status={status} busy={busy} setPage={setPage} />}
         {page === 'collections' && (
           <CollectionsPage
