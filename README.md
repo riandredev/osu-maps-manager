@@ -59,20 +59,20 @@ All mutating commands only push when passed `--push`. Override the lazer databas
 
 <!-- beatmaps:start -->
 
-| Artist                  | Title                                    | Collections |                                                    Beatmapset |
-| ----------------------- | ---------------------------------------- | ----------- | ------------------------------------------------------------: |
-| A.SAKA                  | Yosakura Fubuki                          | favourite   |   [858337](https://osu.ppy.sh/beatmapsets/858337#osu/1793794) |
-| AK X LYNX ft. Veela     | Virtual Paradise                         | favourite   |   [477725](https://osu.ppy.sh/beatmapsets/477725#osu/1056415) |
-| DJ OKAWARI              | Flower Dance                             | favourite   |               [476691](https://osu.ppy.sh/beatmapsets/476691) |
-| Feint                   | Horizons (feat. Veela)                   | favourite   |    [288528](https://osu.ppy.sh/beatmapsets/288528#osu/650683) |
-| Feint                   | Times Like These (Fracture Design Remix) | favourite   |      [82635](https://osu.ppy.sh/beatmapsets/82635#osu/228607) |
-| Hige Driver join. SELEN | Dadadadadadadadadada                     | favourite   |    [206750](https://osu.ppy.sh/beatmapsets/206750#osu/487592) |
-| momori                  | Togameru Kage                            | favourite   |      [55926](https://osu.ppy.sh/beatmapsets/55926#osu/184722) |
-| Otokaze                 | Kiro -KaeriMichi-                        | favourite   |               [928223](https://osu.ppy.sh/beatmapsets/928223) |
-| Soulja Baka             | Soulja Baka                              | favourite   |    [239801](https://osu.ppy.sh/beatmapsets/239801#osu/568290) |
-| Stonebank               | Be Alright (feat. EMEL) (Cut Ver.)       | favourite   | [1151309](https://osu.ppy.sh/beatmapsets/1151309#osu/2405790) |
-| Yorushika               | Deep Indigo                              | favourite   | [1245222](https://osu.ppy.sh/beatmapsets/1245222#osu/2590064) |
-| Yorushika               | Itte.                                    | favourite   |               [985066](https://osu.ppy.sh/beatmapsets/985066) |
+| Artist                  | Title                                    | Collections     |                                                    Beatmapset |
+| ----------------------- | ---------------------------------------- | --------------- | ------------------------------------------------------------: |
+| A.SAKA                  | Yosakura Fubuki                          | favourite       |   [858337](https://osu.ppy.sh/beatmapsets/858337#osu/1793794) |
+| AK X LYNX ft. Veela     | Virtual Paradise                         | favourite       |   [477725](https://osu.ppy.sh/beatmapsets/477725#osu/1056415) |
+| DJ OKAWARI              | Flower Dance                             | favourite       |               [476691](https://osu.ppy.sh/beatmapsets/476691) |
+| Feint                   | Horizons (feat. Veela)                   | favourite, repo |    [288528](https://osu.ppy.sh/beatmapsets/288528#osu/650683) |
+| Feint                   | Times Like These (Fracture Design Remix) | favourite       |      [82635](https://osu.ppy.sh/beatmapsets/82635#osu/228607) |
+| Hige Driver join. SELEN | Dadadadadadadadadada                     | favourite       |    [206750](https://osu.ppy.sh/beatmapsets/206750#osu/487592) |
+| momori                  | Togameru Kage                            | favourite       |      [55926](https://osu.ppy.sh/beatmapsets/55926#osu/184722) |
+| Otokaze                 | Kiro -KaeriMichi-                        | favourite       |               [928223](https://osu.ppy.sh/beatmapsets/928223) |
+| Soulja Baka             | Soulja Baka                              | favourite       |    [239801](https://osu.ppy.sh/beatmapsets/239801#osu/568290) |
+| Stonebank               | Be Alright (feat. EMEL) (Cut Ver.)       | favourite       | [1151309](https://osu.ppy.sh/beatmapsets/1151309#osu/2405790) |
+| Yorushika               | Deep Indigo                              | favourite       | [1245222](https://osu.ppy.sh/beatmapsets/1245222#osu/2590064) |
+| Yorushika               | Itte.                                    | favourite, repo |               [985066](https://osu.ppy.sh/beatmapsets/985066) |
 
 <!-- beatmaps:end -->
 

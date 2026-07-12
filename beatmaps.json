@@ -30,7 +30,7 @@
       "beatmapId": 650683,
       "artist": "Feint",
       "title": "Horizons (feat. Veela)",
-      "collections": ["favourite"],
+      "collections": ["favourite", "repo"],
       "notes": ""
     },
     {
@@ -94,7 +94,7 @@
       "beatmapId": null,
       "artist": "Yorushika",
       "title": "Itte.",
-      "collections": ["favourite"],
+      "collections": ["favourite", "repo"],
       "notes": ""
     }
   ]
