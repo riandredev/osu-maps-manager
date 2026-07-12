@@ -7,10 +7,11 @@ A typed, cross-platform CLI and versioned manifest for tracking and restoring my
 Install [Node.js 20+](https://nodejs.org/) and pnpm, then:
 
 ```powershell
-corepack enable
 pnpm install
 pnpm check
 ```
+
+If `pnpm` is not installed, run `npm install --global pnpm`. Corepack is not required.
 
 ## Everyday workflow (osu!lazer)
 
@@ -35,7 +36,6 @@ pnpm dev -- add "https://osu.ppy.sh/beatmapsets/1234567#osu/7654321" --collectio
 ```powershell
 git clone https://github.com/riandredev/osu-beatmaps.git
 cd osu-beatmaps
-corepack enable
 pnpm install
 pnpm download
 ```
