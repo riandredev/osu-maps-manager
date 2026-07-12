@@ -9,6 +9,31 @@ export type PushResult = {
   committed: boolean;
 };
 
+export function prepareForPush(cwd = root): { pulled: boolean } {
+  const branch = requiredGitOutput(['branch', '--show-current'], cwd);
+  runGit(['fetch', 'origin', branch], cwd);
+  const [ahead = 0, behind = 0] = requiredGitOutput(
+    ['rev-list', '--left-right', '--count', `HEAD...origin/${branch}`],
+    cwd,
+  )
+    .split(/\s+/)
+    .map(Number);
+  if (ahead > 0 && behind > 0) {
+    throw new Error(
+      `Local ${branch} and origin/${branch} have diverged (${ahead} local, ${behind} remote commits). Resolve the Git history in the library folder before syncing again.`,
+    );
+  }
+  if (behind === 0) return { pulled: false };
+  const changes = requiredGitOutput(['status', '--porcelain'], cwd);
+  if (changes) {
+    throw new Error(
+      `origin/${branch} has ${behind} newer commit${behind === 1 ? '' : 's'}, but the library has uncommitted changes. Commit or discard them before syncing again.`,
+    );
+  }
+  runGit(['pull', '--ff-only', 'origin', branch], cwd);
+  return { pulled: true };
+}
+
 export function commitAndPush(message: string, cwd = root): PushResult {
   runGit(['add', 'beatmaps.json', 'README.md'], cwd);
   const diff = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd, windowsHide: true });

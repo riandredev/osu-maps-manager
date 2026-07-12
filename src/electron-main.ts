@@ -3,7 +3,13 @@ import updater from 'electron-updater';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
-import { cloneOrUpdateRepository, commitAndPush, currentBranch, isGitRepository } from './git.js';
+import {
+  cloneOrUpdateRepository,
+  commitAndPush,
+  currentBranch,
+  isGitRepository,
+  prepareForPush,
+} from './git.js';
 import { importArchives } from './importer.js';
 import { readInstalledSetIds, readLazerCollections } from './lazer.js';
 import { manifestPath, mergeBeatmapsets, readManifest, root, writeManifest } from './manifest.js';
@@ -136,6 +142,12 @@ ipcMain.handle(
   async (_event, options: { names?: string[]; push?: boolean } | boolean) => {
     const normalised = typeof options === 'boolean' ? { names: ['repo'], push: options } : options;
     const names = normalised.names?.length ? normalised.names : ['repo'];
+    if (normalised.push) {
+      if (!(await exists(path.join(libraryRoot, '.git')))) {
+        throw new Error('The selected library folder is not a Git repository, so it cannot push.');
+      }
+      prepareForPush(libraryRoot);
+    }
     const manifest = await readLibraryManifest();
     const collections = await readLazerCollections();
     const selected = collections.filter((collection) =>
@@ -158,9 +170,6 @@ ipcMain.handle(
       await updateReadme(manifest, path.join(libraryRoot, 'README.md'));
     }
     if (normalised.push) {
-      if (!(await exists(path.join(libraryRoot, '.git')))) {
-        throw new Error('The selected library folder is not a Git repository, so it cannot push.');
-      }
       const pushResult = commitAndPush(`Sync osu! collections: ${names.join(', ')}`, libraryRoot);
       return { synced: maps.length, added, total: manifest.beatmapsets.length, pushResult };
     }
