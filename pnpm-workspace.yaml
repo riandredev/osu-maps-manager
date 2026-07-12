@@ -4,3 +4,5 @@ allowBuilds:
   electron-winstaller: false
   realm: true
   sharp: true
+overrides:
+  tar: 7.5.19
