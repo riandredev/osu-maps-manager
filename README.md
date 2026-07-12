@@ -16,14 +16,15 @@
 
 ## What it does
 
-|     | Feature                                                                        |
-| --- | ------------------------------------------------------------------------------ |
-| 🎵  | Detects every collection in your local osu!lazer installation                  |
-| ☁️  | Syncs selected collections into a version-controlled manifest                  |
-| 📦  | Restores all maps or one remote collection at a time                           |
-| ✅  | Validates downloaded OSZ archives before importing them                        |
-| 🔁  | Falls back across rai.moe, Nerinyan, and Catboy when a provider is unavailable |
-| 🔒  | Opens lazer's Realm database read-only and never stores osu! credentials       |
+|     | Feature                                                                          |
+| --- | -------------------------------------------------------------------------------- |
+| 🎵  | Detects every collection in your local osu!lazer installation                    |
+| ☁️  | Syncs selected collections into a version-controlled manifest                    |
+| 📦  | Restores all maps or one remote collection at a time                             |
+| ✅  | Validates downloaded OSZ archives before importing them                          |
+| 🔁  | Falls back across rai.moe, Nerinyan, and Catboy when a provider is unavailable   |
+| 🔒  | Opens lazer's Realm database read-only and never stores osu! credentials         |
+| ⬆️  | Prompts when a newer app version is available and installs it after confirmation |
 
 The `main` branch intentionally contains an empty beatmap manifest, so forks and fresh installs start clean.
 
@@ -42,15 +43,16 @@ Windows SmartScreen may warn about the installer because this community project 
 
 The application creates an empty writable library automatically. This is enough for local collection sync and restoration, but **Sync and push** remains disabled because the folder is not a Git repository.
 
-### Option B: connect a GitHub repository
+### Option B: fork and connect the repository (recommended)
 
 Use this when you want remote backup and push support:
 
-1. Fork this repository or create your own repository from it.
-2. Open **Settings** in the app.
-3. Enter the HTTPS repository URL.
-4. Enter the branch containing your beatmap manifest, such as `main`.
-5. Select **Connect repository**.
+1. Sign in to GitHub and select **Fork** at the top of this repository.
+2. Keep the default `main` branch. Your fork begins with an empty beatmap library.
+3. Open **Settings** in the app.
+4. Enter your fork URL: `https://github.com/YOUR_USERNAME/osu-beatmaps.git`.
+5. Enter `main` as the branch.
+6. Select **Connect repository**.
 
 The manager clones or updates that branch into its per-user application-data directory and makes it the active library.
 
@@ -66,7 +68,13 @@ You can also select an existing local clone with **Choose existing folder**.
    - **Sync locally** to update only `beatmaps.json`.
    - **Sync and push** to update, commit, and push a connected Git repository.
 
-Collection names and membership are stored alongside each beatmapset, allowing multiple remote collections to share the same map without duplication.
+You need only **one fork for your entire library**. Collection names and membership are stored alongside each beatmapset in the same `beatmaps.json`, allowing any number of collections to share a map without duplicating it. For example, one map can belong to both `favourites` and `warmup`.
+
+Syncing a selected collection replaces that collection's membership in the manifest while leaving every unselected collection untouched.
+
+## Application updates
+
+Installed builds check GitHub Releases shortly after startup and every four hours while running. When a newer version exists, the app asks before downloading it and asks again before restarting to install it. Development builds do not check for updates.
 
 ## Restore maps
 

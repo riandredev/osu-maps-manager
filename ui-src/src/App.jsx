@@ -463,9 +463,7 @@ function RestorePage(props) {
 }
 
 function SettingsPage({ status, refresh }) {
-  const [repositoryUrl, setRepositoryUrl] = useState(
-    'https://github.com/riandredev/osu-beatmaps.git',
-  );
+  const [repositoryUrl, setRepositoryUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [connecting, setConnecting] = useState(false);
   const [connectionMessage, setConnectionMessage] = useState('');
@@ -494,14 +492,19 @@ function SettingsPage({ status, refresh }) {
           <div>
             <Title2>Connect GitHub repository</Title2>
             <Text>
-              Clone or update a repository branch and use it as this app's active beatmap library.
+              Fork riandredev/osu-beatmaps first, then connect your fork so syncs are pushed to your
+              own account. One repository stores all of your collections.
             </Text>
           </div>
           <CloudArrowUp24Regular />
         </div>
         <div className="form-grid repository-grid">
           <Field label="Repository URL">
-            <Input value={repositoryUrl} onChange={(_, data) => setRepositoryUrl(data.value)} />
+            <Input
+              value={repositoryUrl}
+              placeholder="https://github.com/YOUR_USERNAME/osu-beatmaps.git"
+              onChange={(_, data) => setRepositoryUrl(data.value)}
+            />
           </Field>
           <Field label="Branch">
             <Input value={branch} onChange={(_, data) => setBranch(data.value)} />

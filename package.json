@@ -1,6 +1,6 @@
 {
   "name": "@riandredev/osu-maps",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A typed CLI for tracking and restoring osu! beatmap collections",
   "author": "Riandre",
   "private": true,
@@ -34,10 +34,11 @@
     "@fluentui/react-components": "^9.72.5",
     "@fluentui/react-icons": "^2.0.316",
     "commander": "^14.0.1",
+    "electron-updater": "^6.8.9",
     "prettier": "^3.6.2",
-    "realm": "^20.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "realm": "^20.2.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
@@ -82,6 +83,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "riandredev",
+      "repo": "osu-beatmaps"
     }
   }
 }

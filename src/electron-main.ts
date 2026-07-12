@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
@@ -44,12 +45,52 @@ app.whenReady().then(async () => {
         'The preload bridge did not load. Rebuild the application with pnpm build and restart it.',
       );
     }
+    scheduleUpdateChecks();
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: 'deny' };
   });
 });
+
+function scheduleUpdateChecks(): void {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', async (info) => {
+    const result = await dialog.showMessageBox(window!, {
+      type: 'info',
+      title: 'Update available',
+      message: `osu! Maps Manager ${info.version} is available.`,
+      detail: 'Download the update now? You can keep using the app while it downloads.',
+      buttons: ['Download update', 'Not now'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (result.response === 0) void autoUpdater.downloadUpdate();
+  });
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    const result = await dialog.showMessageBox(window!, {
+      type: 'info',
+      title: 'Update ready',
+      message: `osu! Maps Manager ${info.version} is ready to install.`,
+      detail: 'Restart the app to finish installing the update.',
+      buttons: ['Restart and install', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (result.response === 0) autoUpdater.quitAndInstall(false, true);
+  });
+
+  autoUpdater.on('error', (error) => console.error('Update check failed:', message(error)));
+  const check = () => void autoUpdater.checkForUpdates().catch((error) => console.error(error));
+  setTimeout(check, 3_000);
+  setInterval(check, 4 * 60 * 60 * 1_000);
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
