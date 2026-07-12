@@ -9,10 +9,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/riandredev/osu-beatmaps/releases/latest"><img src="https://img.shields.io/github/v/release/riandredev/osu-beatmaps?style=flat-square" alt="Latest release"></a>
-  <a href="https://github.com/riandredev/osu-beatmaps/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/riandredev/osu-beatmaps/ci.yml?branch=main&style=flat-square&label=CI" alt="CI status"></a>
+  <a href="https://github.com/riandredev/osu-maps-manager/releases/latest"><img src="https://img.shields.io/github/v/release/riandredev/osu-maps-manager?style=flat-square" alt="Latest release"></a>
+  <a href="https://github.com/riandredev/osu-maps-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/riandredev/osu-maps-manager/ci.yml?branch=main&style=flat-square&label=CI" alt="CI status"></a>
   <img src="https://img.shields.io/badge/platform-Windows-7b5cff?style=flat-square" alt="Windows">
 </p>
+
+<!-- beatmaps:start -->
+<div align="center">
+  <p>🎧 <strong>Your beatmap library is ready</strong></p>
+  <p>Connect your fork in the app, then sync a lazer collection to fill this space.</p>
+</div>
+<!-- beatmaps:end -->
 
 ## What it does
 
@@ -30,7 +37,7 @@ The `main` branch intentionally contains an empty beatmap manifest, so forks and
 
 ## Install
 
-1. Open the [latest GitHub Release](https://github.com/riandredev/osu-beatmaps/releases/latest).
+1. Open the [latest GitHub Release](https://github.com/riandredev/osu-maps-manager/releases/latest).
 2. Download `osu-maps-manager-*-setup.exe`.
 3. Run the installer.
 4. Launch **osu! Maps Manager** from the Start menu or desktop shortcut.
@@ -50,7 +57,7 @@ Use this when you want remote backup and push support:
 1. Sign in to GitHub and select **Fork** at the top of this repository.
 2. Keep the default `main` branch. Your fork begins with an empty beatmap library.
 3. Open **Settings** in the app.
-4. Enter your fork URL: `https://github.com/YOUR_USERNAME/osu-beatmaps.git`.
+4. Enter your fork URL: `https://github.com/YOUR_USERNAME/osu-maps-manager.git`.
 5. Enter `main` as the branch.
 6. Select **Connect repository**.
 
@@ -111,8 +118,8 @@ Use **Auto fallback**. The manager rejects non-archive responses and tries the n
 Requirements: Node.js 20+, pnpm, Git, and Windows for installer builds.
 
 ```powershell
-git clone https://github.com/riandredev/osu-beatmaps.git
-cd osu-beatmaps
+git clone https://github.com/riandredev/osu-maps-manager.git
+cd osu-maps-manager
 pnpm install
 pnpm check
 pnpm gui
@@ -136,12 +143,3 @@ Tagged versions are packaged by GitHub Actions and published automatically under
 | `pnpm verify`              | Validate the manifest and detect duplicate IDs                    |
 | `pnpm readme`              | Regenerate the beatmap table                                      |
 | `pnpm check`               | Run linting, formatting checks, tests, and TypeScript compilation |
-
-## Beatmaps
-
-<!-- beatmaps:start -->
-
-| Artist | Title | Collections | Beatmapset |
-| ------ | ----- | ----------- | ---------: |
-
-<!-- beatmaps:end -->

@@ -8,15 +8,31 @@ const start = '<!-- beatmaps:start -->';
 const end = '<!-- beatmaps:end -->';
 
 export function renderTable(manifest: Manifest): string {
+  if (manifest.beatmapsets.length === 0) {
+    return [
+      '<div align="center">',
+      '  <p>🎧 <strong>Your beatmap library is ready</strong></p>',
+      '  <p>Connect your fork in the app, then sync a lazer collection to fill this space.</p>',
+      '</div>',
+    ].join('\n');
+  }
   const rows = [...manifest.beatmapsets]
     .sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title))
     .map((map) => {
       const suffix = map.beatmapId ? `#osu/${map.beatmapId}` : '';
-      return `| ${escapeCell(map.artist)} | ${escapeCell(map.title)} | ${map.collections.join(', ')} | [${map.id}](https://osu.ppy.sh/beatmapsets/${map.id}${suffix}) |`;
+      const url = `https://osu.ppy.sh/beatmapsets/${map.id}${suffix}`;
+      const cover = `<img src="https://assets.ppy.sh/beatmaps/${map.id}/covers/list.jpg" width="96" alt="">`;
+      const track = `**[${escapeCell(map.title)}](${url})**<br><sub>${escapeCell(map.artist)} · beatmapset ${map.id}</sub>`;
+      const collections = map.collections.map(collectionBadge).join(' ');
+      return `| ${cover} | ${track} | ${collections} |`;
     });
   return [
-    '| Artist | Title | Collections | Beatmapset |',
-    '| --- | --- | --- | ---: |',
+    '## Synced beatmaps',
+    '',
+    `${manifest.beatmapsets.length} beatmapsets across ${new Set(manifest.beatmapsets.flatMap((map) => map.collections)).size} collections.`,
+    '',
+    '| Cover | Beatmap | Collections |',
+    '| :---: | --- | --- |',
     ...rows,
   ].join('\n');
 }
@@ -36,4 +52,9 @@ export async function updateReadme(
 
 function escapeCell(value: string): string {
   return value.replaceAll('|', '\\|').replaceAll('\n', ' ');
+}
+
+function collectionBadge(collection: string): string {
+  const label = encodeURIComponent(collection.replaceAll('-', '--'));
+  return `<img alt="${escapeCell(collection)}" src="https://img.shields.io/badge/${label}-d94f9d?style=flat-square">`;
 }

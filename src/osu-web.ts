@@ -12,7 +12,7 @@ export async function fetchBeatmapset(value: string, collection: string): Promis
   const { setId, beatmapId } = parseBeatmapUrl(value);
   const response = await fetch(`https://osu.ppy.sh/beatmapsets/${setId}`, {
     signal: AbortSignal.timeout(15_000),
-    headers: { 'user-agent': 'osu-maps/1.0 (+https://github.com/riandredev/osu-beatmaps)' },
+    headers: { 'user-agent': 'osu-maps/1.0 (+https://github.com/riandredev/osu-maps-manager)' },
   });
   if (!response.ok)
     throw new Error(`osu! returned HTTP ${response.status} for beatmapset ${setId}`);

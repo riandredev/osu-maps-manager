@@ -1,6 +1,6 @@
 {
   "name": "@riandredev/osu-maps",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A typed CLI for tracking and restoring osu! beatmap collections",
   "author": "Riandre",
   "private": true,
@@ -87,7 +87,7 @@
     "publish": {
       "provider": "github",
       "owner": "riandredev",
-      "repo": "osu-beatmaps"
+      "repo": "osu-maps-manager"
     }
   }
 }

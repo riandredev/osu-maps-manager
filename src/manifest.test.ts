@@ -30,5 +30,14 @@ describe('manifest merging', () => {
       { id: 10, beatmapId: null, artist: 'A', title: 'T', collections: ['repo'], notes: '' },
     ]);
     expect(renderTable(manifest)).toContain('https://osu.ppy.sh/beatmapsets/10');
+    expect(renderTable(manifest)).toContain('https://assets.ppy.sh/beatmaps/10/covers/list.jpg');
+    expect(renderTable(manifest)).toContain('img.shields.io/badge/repo-d94f9d');
+  });
+
+  it('renders an empty state without a beatmap heading or table', () => {
+    const output = renderTable(empty());
+    expect(output).toContain('Your beatmap library is ready');
+    expect(output).not.toContain('Synced beatmaps');
+    expect(output).not.toContain('| Cover |');
   });
 });

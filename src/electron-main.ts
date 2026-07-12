@@ -230,6 +230,7 @@ ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
       (progress) => window?.webContents.send('maps:progress', { type: 'download', ...progress }),
     );
     if (options.importAfter !== false && files.length > 0) {
+      window?.webContents.send('maps:progress', { type: 'opening' });
       await importArchives(files, undefined, (file, index, total) =>
         window?.webContents.send('maps:progress', { type: 'import', file, index, total }),
       );

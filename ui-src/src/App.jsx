@@ -78,8 +78,12 @@ export default function App() {
   useEffect(() => {
     if (!bridge) return undefined;
     const unsubscribe = bridge.onProgress((event) => {
+      if (event.type === 'opening') {
+        setStage('Opening osu!lazer');
+        return;
+      }
       if (event.type === 'import') {
-        setStage(`Importing ${event.index} of ${event.total}`);
+        setStage(`Opening osu!lazer · ${event.index} of ${event.total}`);
         return;
       }
       setEvents((current) => new Map(current).set(event.id, event));
@@ -492,8 +496,8 @@ function SettingsPage({ status, refresh }) {
           <div>
             <Title2>Connect GitHub repository</Title2>
             <Text>
-              Fork riandredev/osu-beatmaps first, then connect your fork so syncs are pushed to your
-              own account. One repository stores all of your collections.
+              Fork riandredev/osu-maps-manager first, then connect your fork so syncs are pushed to
+              your own account. One repository stores all of your collections.
             </Text>
           </div>
           <CloudArrowUp24Regular />
@@ -502,7 +506,7 @@ function SettingsPage({ status, refresh }) {
           <Field label="Repository URL">
             <Input
               value={repositoryUrl}
-              placeholder="https://github.com/YOUR_USERNAME/osu-beatmaps.git"
+              placeholder="https://github.com/YOUR_USERNAME/osu-maps-manager.git"
               onChange={(_, data) => setRepositoryUrl(data.value)}
             />
           </Field>
