@@ -59,6 +59,22 @@ export async function readLazerCollection(
   }
 }
 
+export async function readInstalledSetIds(database = defaultRealmPath()): Promise<Set<number>> {
+  if (isOsuRunning()) throw new Error('Close osu!lazer before scanning installed beatmaps.');
+  const { default: Realm } = await import('realm');
+  const realm = await Realm.open({ path: database, readOnly: true });
+  try {
+    const ids = new Set<number>();
+    for (const set of realm.objects<Dynamic>('BeatmapSet')) {
+      const id = Number(set.OnlineID);
+      if (id > 0 && !set.DeletePending) ids.add(id);
+    }
+    return ids;
+  } finally {
+    realm.close();
+  }
+}
+
 function isOsuRunning(): boolean {
   if (process.platform !== 'win32') return false;
   try {

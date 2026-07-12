@@ -6,4 +6,10 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   { rules: { '@typescript-eslint/no-explicit-any': 'off' } },
+  {
+    files: ['ui/**/*.js'],
+    languageOptions: {
+      globals: { document: 'readonly', window: 'readonly', setTimeout: 'readonly' },
+    },
+  },
 );

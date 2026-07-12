@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import path from 'node:path';
+import { DownloadManager } from './download.js';
 import { commitAndPush } from './git.js';
-import { mergeBeatmapsets, readManifest, writeManifest } from './manifest.js';
+import { importArchives } from './importer.js';
+import { mergeBeatmapsets, readManifest, root, writeManifest } from './manifest.js';
 import { fetchBeatmapset } from './osu-web.js';
-import { openUrl } from './platform.js';
 import { updateReadme } from './readme.js';
 
 const program = new Command()
@@ -68,20 +70,40 @@ program
   });
 
 program
-  .command('download')
-  .description('Open official authenticated osu! download pages for restoration')
-  .option('-c, --collection <name>', 'only open one collection')
-  .action(async (options: { collection?: string }) => {
-    const manifest = await readManifest();
-    const maps = options.collection
-      ? manifest.beatmapsets.filter((map) => map.collections.includes(options.collection!))
-      : manifest.beatmapsets;
-    for (const map of maps) {
-      await openUrl(`https://osu.ppy.sh/beatmapsets/${map.id}/download`);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    console.log(`Opened ${maps.length} official download pages.`);
-  });
+  .command('restore')
+  .description('Download missing beatmaps from a configured mirror and import them into lazer')
+  .option('--provider <url>', 'mirror API base URL', 'https://api.rai.moe')
+  .option('--concurrency <number>', 'concurrent downloads', '3')
+  .option('--all', 'download all tracked maps, not only missing maps')
+  .option('--no-import', 'download without importing into lazer')
+  .action(
+    async (options: { provider: string; concurrency: string; all?: boolean; import: boolean }) => {
+      const manifest = await readManifest();
+      let maps = manifest.beatmapsets;
+      if (!options.all) {
+        const { readInstalledSetIds } = await import('./lazer.js');
+        const installed = await readInstalledSetIds();
+        maps = maps.filter((map) => !installed.has(map.id));
+      }
+      const manager = new DownloadManager();
+      const files = await manager.downloadAll(
+        maps,
+        path.join(root, 'downloads'),
+        Number(options.concurrency),
+        options.provider,
+        (progress) => {
+          if (progress.state !== 'downloading')
+            console.log(
+              `[${progress.state}] ${progress.artist} — ${progress.title}${progress.error ? `: ${progress.error}` : ''}`,
+            );
+        },
+      );
+      if (options.import) await importArchives(files);
+      console.log(
+        `Restore finished: ${files.length}/${maps.length} archives ready${options.import ? ' and handed to lazer' : ''}.`,
+      );
+    },
+  );
 
 program.parseAsync().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : error);
