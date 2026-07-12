@@ -2,4 +2,7 @@
 downloads/*
 !downloads/.gitkeep
 *.osz
-
+node_modules/
+dist/
+coverage/
+work/

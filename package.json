@@ -1,0 +1,42 @@
+{
+  "name": "@riandredev/osu-maps",
+  "version": "1.0.0",
+  "description": "A typed CLI for tracking and restoring osu! beatmap collections",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "osu-maps": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "sync": "tsx src/cli.ts sync-collection",
+    "download": "tsx src/cli.ts download",
+    "verify": "tsx src/cli.ts verify",
+    "readme": "tsx src/cli.ts readme",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "eslint . && prettier --check . && vitest run && tsc -p tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "dependencies": {
+    "commander": "^14.0.1",
+    "prettier": "^3.6.2",
+    "realm": "^20.2.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "@types/node": "^24.7.2",
+    "eslint": "^9.37.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1",
+    "vitest": "^3.2.4"
+  }
+}
