@@ -3,3 +3,4 @@ allowBuilds:
   electron: true
   electron-winstaller: false
   realm: true
+  sharp: true

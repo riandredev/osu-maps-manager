@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
 import { commitAndPush } from './git.js';
@@ -11,6 +11,8 @@ let window: BrowserWindow | null = null;
 let manager: DownloadManager | null = null;
 
 app.whenReady().then(() => {
+  app.setAppUserModelId('dev.riandre.osuMaps');
+  Menu.setApplicationMenu(null);
   window = new BrowserWindow({
     width: 1100,
     height: 760,
@@ -18,6 +20,8 @@ app.whenReady().then(() => {
     minHeight: 600,
     title: 'osu! Maps Manager',
     backgroundColor: '#11131a',
+    icon: path.join(root, 'assets', 'app-icon.png'),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(import.meta.dirname, 'electron-preload.cjs'),
       contextIsolation: true,
@@ -25,7 +29,19 @@ app.whenReady().then(() => {
       sandbox: true,
     },
   });
-  void window.loadFile(path.join(root, 'ui', 'index.html'));
+  void window.loadFile(path.join(root, 'ui-dist', 'index.html'));
+  window.webContents.once('did-finish-load', async () => {
+    const bridgeReady = await window?.webContents.executeJavaScript(
+      "typeof window.osuMaps === 'object' && typeof window.osuMaps.sync === 'function'",
+    );
+    console.log(`Renderer bridge: ${bridgeReady ? 'ready' : 'unavailable'}`);
+    if (!bridgeReady) {
+      dialog.showErrorBox(
+        'Desktop bridge unavailable',
+        'The preload bridge did not load. Rebuild the application with pnpm build and restart it.',
+      );
+    }
+  });
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: 'deny' };

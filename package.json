@@ -9,7 +9,8 @@
     "osu-maps": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "assets": "node scripts/build-assets.mjs",
+    "build": "pnpm assets && tsc -p tsconfig.json && vite build",
     "dev": "tsx src/cli.ts",
     "gui": "pnpm build && electron .",
     "gui:dev": "pnpm build && electron .",
@@ -28,19 +29,28 @@
   },
   "packageManager": "pnpm@11.7.0",
   "dependencies": {
+    "@fluentui/react-components": "^9.72.5",
+    "@fluentui/react-icons": "^2.0.316",
     "commander": "^14.0.1",
     "prettier": "^3.6.2",
     "realm": "^20.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
     "@types/node": "^24.7.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
     "electron": "^38.2.2",
     "eslint": "^9.37.0",
+    "sharp": "^0.34.4",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.1",
+    "vite": "^7.1.9",
     "vitest": "^3.2.4"
   }
 }

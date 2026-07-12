@@ -4,6 +4,7 @@ downloads/*
 *.osz
 node_modules/
 dist/
+ui-dist/
 coverage/
 release/
 work/
