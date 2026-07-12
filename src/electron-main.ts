@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import updater from 'electron-updater';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
@@ -12,6 +12,7 @@ import { updateReadme } from './readme.js';
 let window: BrowserWindow | null = null;
 let manager: DownloadManager | null = null;
 let libraryRoot = root;
+const { autoUpdater } = updater;
 
 app.whenReady().then(async () => {
   libraryRoot = await initialiseLibrary();
