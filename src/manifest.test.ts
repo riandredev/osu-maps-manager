@@ -33,12 +33,32 @@ describe('manifest merging', () => {
     expect(renderTable(manifest)).toContain('https://assets.ppy.sh/beatmaps/10/covers/list.jpg');
     expect(renderTable(manifest)).toContain('img.shields.io/badge/repo-d94f9d');
     expect(renderTable(manifest)).toContain('1 collection.');
+    expect(renderTable(manifest)).toContain('<table width="100%">');
+    expect(renderTable(manifest)).toContain('width="56"');
   });
 
   it('renders an empty state without a beatmap heading or table', () => {
     const output = renderTable(empty());
     expect(output).toContain('Your beatmap library is ready');
     expect(output).not.toContain('Synced beatmaps');
-    expect(output).not.toContain('| Cover |');
+    expect(output).not.toContain('<table');
+  });
+
+  it('caps large README previews while retaining the manifest count', () => {
+    const manifest: Manifest = {
+      version: 1,
+      beatmapsets: Array.from({ length: 201 }, (_, id) => ({
+        id: id + 1,
+        beatmapId: null,
+        artist: `Artist ${id}`,
+        title: `Title ${id}`,
+        collections: ['library'],
+        notes: '',
+      })),
+    };
+    const output = renderTable(manifest);
+    expect(output).toContain('201 beatmapsets');
+    expect(output).toContain('Showing the first 200 maps');
+    expect(output.match(/<tr><td/g)).toHaveLength(200);
   });
 });

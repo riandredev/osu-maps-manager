@@ -133,6 +133,15 @@ pnpm package:win
 
 Tagged versions are packaged by GitHub Actions and published automatically under Releases.
 
+## Contributing
+
+Issues and pull requests are welcome. Fork the repository, create a focused branch, run
+`pnpm check`, and describe the behaviour your change adds or fixes.
+
+## License
+
+osu! Maps Manager is open-source software licensed under the [MIT License](LICENSE).
+
 ## CLI commands
 
 | Command                    | Purpose                                                           |
