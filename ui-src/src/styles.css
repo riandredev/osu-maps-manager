@@ -147,6 +147,13 @@ header span {
 .page-card {
   min-height: 300px;
 }
+.compact-card {
+  min-height: 0;
+}
+.settings-stack {
+  display: grid;
+  gap: 16px;
+}
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -223,6 +230,18 @@ header span {
 }
 .form-grid.three {
   grid-template-columns: 1fr 1fr 160px;
+}
+.form-grid.repository-grid {
+  grid-template-columns: 2fr 1fr;
+}
+.inline-help,
+.connection-message {
+  display: block;
+  color: #a9acb7;
+  margin-top: 12px;
+}
+.library-state {
+  margin-top: 12px;
 }
 .checks {
   display: flex;

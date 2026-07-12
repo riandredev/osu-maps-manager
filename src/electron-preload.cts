@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('osuMaps', {
   status: () => ipcRenderer.invoke('maps:status'),
   sync: (options: unknown) => ipcRenderer.invoke('maps:sync', options),
   selectLibrary: () => ipcRenderer.invoke('maps:select-library'),
+  connectRepository: (options: unknown) => ipcRenderer.invoke('maps:connect-repository', options),
   restore: (options: unknown) => ipcRenderer.invoke('maps:restore', options),
   cancel: () => ipcRenderer.invoke('maps:cancel'),
   onProgress: (callback: (value: unknown) => void) => {

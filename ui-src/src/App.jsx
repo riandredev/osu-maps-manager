@@ -38,6 +38,8 @@ export default function App() {
     localCollections: [],
     remoteCollections: [],
     libraryPath: '',
+    isGitRepository: false,
+    gitBranch: null,
   });
   const [selectedLocal, setSelectedLocal] = useState([]);
   const [remoteCollection, setRemoteCollection] = useState('all');
@@ -69,7 +71,7 @@ export default function App() {
         current.length ? current : next.localCollections.map((collection) => collection.name),
       );
     } catch (error) {
-      setMessage(String(error));
+      setMessage(errorMessage(error));
     }
   }
 
@@ -111,7 +113,7 @@ export default function App() {
       setMessage(`Synced ${result.synced} maps; added ${result.added}.`);
       await refresh();
     } catch (error) {
-      setMessage(String(error));
+      setMessage(errorMessage(error));
     } finally {
       setBusy(false);
       setStage('Ready');
@@ -132,12 +134,14 @@ export default function App() {
         importAfter,
       });
       setMessage(
-        `Restore complete: ${result.downloaded} downloaded, ${result.imported} handed to lazer.`,
+        result.nothingToDo === 'already-installed'
+          ? 'Everything in the selected library is already installed.'
+          : `Restore complete: ${result.downloaded} downloaded, ${result.imported} handed to lazer.`,
       );
       setStage('Complete');
       await refresh();
     } catch (error) {
-      setMessage(String(error));
+      setMessage(errorMessage(error));
       setStage('Stopped');
     } finally {
       setBusy(false);
@@ -214,6 +218,7 @@ export default function App() {
             busy={busy}
             toggle={toggleCollection}
             sync={sync}
+            isGitRepository={status.isGitRepository}
           />
         )}
         {page === 'restore' && (
@@ -277,7 +282,7 @@ function LibraryPage({ status, busy, setPage }) {
   );
 }
 
-function CollectionsPage({ collections, selected, busy, toggle, sync }) {
+function CollectionsPage({ collections, selected, busy, toggle, sync, isGitRepository }) {
   return (
     <Card className="card page-card">
       <div className="section-heading">
@@ -312,10 +317,24 @@ function CollectionsPage({ collections, selected, busy, toggle, sync }) {
         <Button disabled={busy || !selected.length} onClick={() => sync(false)}>
           Sync locally
         </Button>
-        <Button appearance="primary" disabled={busy || !selected.length} onClick={() => sync(true)}>
+        <Button
+          appearance="primary"
+          disabled={busy || !selected.length || !isGitRepository}
+          title={
+            isGitRepository
+              ? 'Commit and push selected collections'
+              : 'Connect a Git repository in Settings first'
+          }
+          onClick={() => sync(true)}
+        >
           Sync and push
         </Button>
       </div>
+      {!isGitRepository && (
+        <Text className="inline-help" size={200}>
+          Sync locally is available now. To push, connect a GitHub repository in Settings.
+        </Text>
+      )}
     </Card>
   );
 }
@@ -444,31 +463,87 @@ function RestorePage(props) {
 }
 
 function SettingsPage({ status, refresh }) {
+  const [repositoryUrl, setRepositoryUrl] = useState(
+    'https://github.com/riandredev/osu-beatmaps.git',
+  );
+  const [branch, setBranch] = useState('main');
+  const [connecting, setConnecting] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState('');
+
   async function choose() {
     const selected = await bridge.selectLibrary();
     if (selected) await refresh();
   }
+  async function connect() {
+    setConnecting(true);
+    setConnectionMessage('');
+    try {
+      const folder = await bridge.connectRepository({ url: repositoryUrl, branch });
+      setConnectionMessage(`Connected ${branch} at ${folder}`);
+      await refresh();
+    } catch (error) {
+      setConnectionMessage(errorMessage(error));
+    } finally {
+      setConnecting(false);
+    }
+  }
   return (
-    <Card className="card page-card">
-      <div className="section-heading">
-        <div>
-          <Title2>Library storage</Title2>
-          <Text>
-            The installed app keeps writable data outside its installation directory. Choose a
-            cloned Git repository to enable Sync and push.
-          </Text>
+    <div className="settings-stack">
+      <Card className="card page-card">
+        <div className="section-heading">
+          <div>
+            <Title2>Connect GitHub repository</Title2>
+            <Text>
+              Clone or update a repository branch and use it as this app's active beatmap library.
+            </Text>
+          </div>
+          <CloudArrowUp24Regular />
         </div>
-        <FolderOpen24Regular />
-      </div>
-      <Field label="Current library folder">
-        <Input readOnly value={status.libraryPath || 'Loading…'} />
-      </Field>
-      <div className="button-row">
-        <Button appearance="primary" icon={<FolderOpen24Regular />} onClick={choose}>
-          Choose folder
-        </Button>
-      </div>
-    </Card>
+        <div className="form-grid repository-grid">
+          <Field label="Repository URL">
+            <Input value={repositoryUrl} onChange={(_, data) => setRepositoryUrl(data.value)} />
+          </Field>
+          <Field label="Branch">
+            <Input value={branch} onChange={(_, data) => setBranch(data.value)} />
+          </Field>
+        </div>
+        {connectionMessage && <Text className="connection-message">{connectionMessage}</Text>}
+        <div className="button-row">
+          <Button
+            appearance="primary"
+            icon={<CloudArrowUp24Regular />}
+            disabled={connecting}
+            onClick={connect}
+          >
+            {connecting ? 'Connecting…' : 'Connect repository'}
+          </Button>
+        </div>
+      </Card>
+      <Card className="card page-card compact-card">
+        <div className="section-heading">
+          <div>
+            <Title2>Library storage</Title2>
+            <Text>Choose an existing local folder instead of cloning a repository.</Text>
+          </div>
+          <FolderOpen24Regular />
+        </div>
+        <Field label="Current library folder">
+          <Input readOnly value={status.libraryPath || 'Loading…'} />
+        </Field>
+        <div className="library-state">
+          <Badge appearance="tint" color={status.isGitRepository ? 'success' : 'warning'}>
+            {status.isGitRepository
+              ? `Git · ${status.gitBranch || 'branch unknown'}`
+              : 'Local only'}
+          </Badge>
+        </div>
+        <div className="button-row">
+          <Button icon={<FolderOpen24Regular />} onClick={choose}>
+            Choose existing folder
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -515,4 +590,10 @@ function providerLabel(provider) {
       'https://catboy.best': 'Catboy only',
     }[provider] || provider
   );
+}
+
+function errorMessage(error) {
+  return String(error)
+    .replace(/^Error:\s*/i, '')
+    .replace(/^Error invoking remote method '[^']+':\s*Error:\s*/i, '');
 }

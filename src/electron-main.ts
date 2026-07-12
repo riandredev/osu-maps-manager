@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DownloadManager } from './download.js';
-import { commitAndPush } from './git.js';
+import { cloneOrUpdateRepository, commitAndPush, currentBranch, isGitRepository } from './git.js';
 import { importArchives } from './importer.js';
 import { readInstalledSetIds, readLazerCollections } from './lazer.js';
 import { manifestPath, mergeBeatmapsets, readManifest, root, writeManifest } from './manifest.js';
@@ -74,6 +74,8 @@ ipcMain.handle('maps:status', async () => {
     missing: installed ? manifest.beatmapsets.filter((map) => !installed.has(map.id)).length : null,
     scanError,
     libraryPath: libraryRoot,
+    isGitRepository: isGitRepository(libraryRoot),
+    gitBranch: currentBranch(libraryRoot),
     remoteCollections: [...new Set(manifest.beatmapsets.flatMap((map) => map.collections))].sort(),
     localCollections: localCollections.map(({ name, difficultyCount, beatmapsetCount }) => ({
       name,
@@ -135,6 +137,21 @@ ipcMain.handle('maps:select-library', async () => {
   return libraryRoot;
 });
 
+ipcMain.handle(
+  'maps:connect-repository',
+  async (_event, options: { url?: string; branch?: string }) => {
+    const url = options.url?.trim();
+    const branch = options.branch?.trim() || 'main';
+    if (!url) throw new Error('Enter a GitHub repository URL.');
+    const parent = path.join(app.getPath('userData'), 'repositories');
+    await mkdir(parent, { recursive: true });
+    libraryRoot = cloneOrUpdateRepository(url, branch, parent);
+    await ensureLibrary(libraryRoot);
+    await saveSettings({ libraryPath: libraryRoot });
+    return libraryRoot;
+  },
+);
+
 ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
   if (manager) throw new Error('A restore is already running.');
   const options = raw as {
@@ -149,9 +166,17 @@ ipcMain.handle('maps:restore', async (_event, raw: unknown) => {
   if (options.collection) {
     maps = maps.filter((map) => map.collections.includes(options.collection!));
   }
+  if (maps.length === 0) {
+    throw new Error(
+      'No tracked beatmaps matched this restore. Connect a repository in Settings or sync a local collection first.',
+    );
+  }
   if (options.onlyMissing !== false) {
     const installed = await readInstalledSetIds();
     maps = maps.filter((map) => !installed.has(map.id));
+  }
+  if (maps.length === 0) {
+    return { requested: 0, downloaded: 0, imported: 0, nothingToDo: 'already-installed' };
   }
   manager = new DownloadManager();
   try {

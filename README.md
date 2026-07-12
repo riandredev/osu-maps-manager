@@ -1,80 +1,133 @@
-# osu! Maps Manager
+<p align="center">
+  <img src="assets/app-icon.png" width="112" alt="osu! Maps Manager icon">
+</p>
 
-A desktop application and typed CLI for syncing osu!lazer collections, tracking beatmapsets, and restoring missing maps without opening hundreds of browser tabs. The `main` branch ships with an empty manifest so anyone can use it as a clean starting point.
+<h1 align="center">osu! Maps Manager</h1>
 
-## Install on Windows
+<p align="center">
+  Sync osu!lazer collections, keep a portable beatmap manifest, and restore missing maps without opening hundreds of browser tabs.
+</p>
 
-Download the latest `osu-maps-manager-*-setup.exe` from [GitHub Releases](https://github.com/riandredev/osu-beatmaps/releases), run the installer, and launch **osu! Maps Manager** from the Start menu or desktop shortcut.
+<p align="center">
+  <a href="https://github.com/riandredev/osu-beatmaps/releases/latest"><img src="https://img.shields.io/github/v/release/riandredev/osu-beatmaps?style=flat-square" alt="Latest release"></a>
+  <a href="https://github.com/riandredev/osu-beatmaps/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/riandredev/osu-beatmaps/ci.yml?branch=main&style=flat-square&label=CI" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/platform-Windows-7b5cff?style=flat-square" alt="Windows">
+</p>
 
-The installed application stores its default writable library under its per-user application data directory. In **Settings**, you can choose a cloned Git repository as the library folder to enable version-controlled Sync and push.
+## What it does
 
-## Setup
+|     | Feature                                                                        |
+| --- | ------------------------------------------------------------------------------ |
+| 🎵  | Detects every collection in your local osu!lazer installation                  |
+| ☁️  | Syncs selected collections into a version-controlled manifest                  |
+| 📦  | Restores all maps or one remote collection at a time                           |
+| ✅  | Validates downloaded OSZ archives before importing them                        |
+| 🔁  | Falls back across rai.moe, Nerinyan, and Catboy when a provider is unavailable |
+| 🔒  | Opens lazer's Realm database read-only and never stores osu! credentials       |
 
-Install [Node.js 20+](https://nodejs.org/) and pnpm, then:
+The `main` branch intentionally contains an empty beatmap manifest, so forks and fresh installs start clean.
 
-```powershell
-pnpm install
-pnpm check
-```
+## Install
 
-If `pnpm` is not installed, run `npm install --global pnpm`. Corepack is not required.
+1. Open the [latest GitHub Release](https://github.com/riandredev/osu-beatmaps/releases/latest).
+2. Download `osu-maps-manager-*-setup.exe`.
+3. Run the installer.
+4. Launch **osu! Maps Manager** from the Start menu or desktop shortcut.
 
-## Collection workflow
+Windows SmartScreen may warn about the installer because this community project does not yet have a commercial code-signing certificate.
 
-1. Organise maps into any number of collections inside osu!lazer.
-2. Fully close osu!lazer.
-3. Open the manager and refresh.
-4. Open **Collections**, select one or more detected collections, then sync locally or push them to the selected Git repository.
-5. Open **Restore** to restore all tracked maps or one remote collection.
+## First-time setup
 
-Collection names and membership are stored in `beatmaps.json`. Restoring one collection downloads and imports only its beatmaps. The manager does not write collection membership directly into lazer's Realm database; doing so would risk database corruption. Imported maps can be regrouped in-game after import.
+### Option A: local-only library
 
-For a map found on the website:
+The application creates an empty writable library automatically. This is enough for local collection sync and restoration, but **Sync and push** remains disabled because the folder is not a Git repository.
 
-```powershell
-pnpm dev -- add "https://osu.ppy.sh/beatmapsets/1234567#osu/7654321" --collection repo --push
-```
+### Option B: connect a GitHub repository
 
-## Desktop manager
+Use this when you want remote backup and push support:
 
-Launch the GUI:
+1. Fork this repository or create your own repository from it.
+2. Open **Settings** in the app.
+3. Enter the HTTPS repository URL.
+4. Enter the branch containing your beatmap manifest, such as `main`.
+5. Select **Connect repository**.
 
-```powershell
-pnpm gui
-```
+The manager clones or updates that branch into its per-user application-data directory and makes it the active library.
 
-The desktop manager provides collection sync, installed/missing detection, a bounded download queue, detailed per-map progress, cancellation, three retry attempts, `.part` files, archive validation, skip-existing behaviour, and automatic handoff to osu!lazer. It opens no beatmap browser tabs.
+You can also select an existing local clone with **Choose existing folder**.
 
-The default **Auto fallback** provider tries rai.moe, Nerinyan, and Catboy in order. It rejects non-archive responses before import. Mirrors are independent community services, are not operated or endorsed by osu!, and may be unavailable or have incomplete content.
+## Sync collections
 
-For database scans and collection sync, close osu!lazer first. The application starts lazer automatically when it is ready to import downloaded archives.
+1. Create and manage collections normally inside osu!lazer.
+2. Fully close osu!lazer so its local database can be read safely.
+3. Open **Collections** in the manager and select **Refresh**.
+4. Select one or more detected collections.
+5. Choose:
+   - **Sync locally** to update only `beatmaps.json`.
+   - **Sync and push** to update, commit, and push a connected Git repository.
+
+Collection names and membership are stored alongside each beatmapset, allowing multiple remote collections to share the same map without duplication.
+
+## Restore maps
+
+1. Fully close osu!lazer.
+2. Open **Restore**.
+3. Choose all remote collections or one specific collection.
+4. Leave **Auto fallback** enabled unless troubleshooting a provider.
+5. Select **Download and import**.
+
+The app downloads only missing maps by default, shows per-map progress, retries failures, validates each archive, and then hands completed files to osu!lazer for import.
+
+> The manager restores the maps belonging to a collection, but it does not write collection membership directly into lazer's Realm database. Direct writes could corrupt the game database. Regroup imported maps inside lazer when needed.
+
+## Troubleshooting
+
+### “The selected library folder is not a Git repository”
+
+The active library is local-only. Open **Settings** and connect a GitHub repository, or continue using **Sync locally**.
+
+### “No tracked beatmaps matched this restore”
+
+The active manifest is empty. Connect the correct repository and branch in **Settings**, or sync a local collection first.
+
+### Collections are not detected
+
+Fully exit osu!lazer and select **Refresh**. The game keeps `client.realm` open while running.
+
+### A mirror returns JSON or an invalid file
+
+Use **Auto fallback**. The manager rejects non-archive responses and tries the next provider automatically.
 
 ## Development
 
+Requirements: Node.js 20+, pnpm, Git, and Windows for installer builds.
+
 ```powershell
+git clone https://github.com/riandredev/osu-beatmaps.git
+cd osu-beatmaps
 pnpm install
 pnpm check
 pnpm gui
 ```
 
-Alternatively, restore without the GUI:
+Build the Windows installer:
 
 ```powershell
-pnpm restore
+pnpm package:win
 ```
 
-## Commands
+Tagged versions are packaged by GitHub Actions and published automatically under Releases.
 
-| Command                    | Purpose                                                       |
-| -------------------------- | ------------------------------------------------------------- |
-| `pnpm sync`                | Sync the lazer collection named `repo` from the CLI           |
-| `pnpm dev -- add <url...>` | Add one or many website URLs                                  |
-| `pnpm restore`             | Download missing maps and import them into lazer              |
-| `pnpm verify`              | Validate the versioned manifest and duplicates                |
-| `pnpm readme`              | Regenerate the table below                                    |
-| `pnpm check`               | Run linting, formatting checks, tests, and a production build |
+## CLI commands
 
-All mutating commands only push when passed `--push`. Override the lazer database path with `--database` or `OSU_REALM_PATH`.
+| Command                    | Purpose                                                           |
+| -------------------------- | ----------------------------------------------------------------- |
+| `pnpm sync`                | Sync the lazer collection named `repo`                            |
+| `pnpm dev -- add <url...>` | Add one or more beatmapset URLs                                   |
+| `pnpm restore`             | Download missing maps and import them into lazer                  |
+| `pnpm verify`              | Validate the manifest and detect duplicate IDs                    |
+| `pnpm readme`              | Regenerate the beatmap table                                      |
+| `pnpm check`               | Run linting, formatting checks, tests, and TypeScript compilation |
 
 ## Beatmaps
 
@@ -84,12 +137,3 @@ All mutating commands only push when passed `--push`. Override the lazer databas
 | ------ | ----- | ----------- | ---------: |
 
 <!-- beatmaps:end -->
-
-## Security and storage
-
-- `.osz`, `.env`, downloads, build output, and dependencies are ignored.
-- The lazer database is opened read-only and is never committed.
-- No credentials are required for collection sync, validation, or manifest editing.
-- Downloads use a configurable community mirror and are validated before import.
-- Installed builds never modify files inside the installation directory.
-- GitHub Actions runs the full quality check for every push and pull request.
