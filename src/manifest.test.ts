@@ -35,6 +35,7 @@ describe('manifest merging', () => {
     expect(renderTable(manifest)).toContain('1 collection.');
     expect(renderTable(manifest)).toContain('<table width="100%">');
     expect(renderTable(manifest)).toContain('width="56"');
+    expect(renderTable(manifest)).toContain('assets/readme-column-width.svg');
   });
 
   it('renders an empty state without a beatmap heading or table', () => {

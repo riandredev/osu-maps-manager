@@ -43,7 +43,7 @@ export function renderTable(manifest: Manifest): string {
       : []),
     '<table width="100%">',
     '  <thead>',
-    '    <tr><th width="64">Cover</th><th align="left">Beatmap</th><th width="180" align="left">Collections</th></tr>',
+    '    <tr><th>Cover</th><th align="left"><img src="assets/readme-column-width.svg" width="560" height="1" alt=""><br>Beatmap</th><th align="left">Collections</th></tr>',
     '  </thead>',
     '  <tbody>',
     ...rows,
