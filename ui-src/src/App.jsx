@@ -27,7 +27,6 @@ import {
   Dismiss24Regular,
   FolderOpen24Regular,
   MusicNote224Regular,
-  Play24Filled,
   Settings24Regular,
 } from '@fluentui/react-icons';
 
@@ -374,7 +373,7 @@ function RestorePage(props) {
             <Title2>Restore options</Title2>
             <Text>Auto provider tries rai.moe, Nerinyan, then Catboy with archive validation.</Text>
           </div>
-          <Play24Filled />
+          <ArrowDownload24Regular />
         </div>
         <div className="form-grid three">
           <Field label="Remote collection">
@@ -435,11 +434,11 @@ function RestorePage(props) {
           </Button>
           <Button
             appearance="primary"
-            icon={<Play24Filled />}
+            icon={<ArrowDownload24Regular />}
             disabled={props.busy}
             onClick={props.restore}
           >
-            Download and import
+            Restore beatmaps
           </Button>
         </div>
       </Card>

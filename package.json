@@ -1,7 +1,7 @@
 {
   "name": "@riandredev/osu-maps",
-  "version": "1.0.8",
-  "description": "A typed CLI for tracking and restoring osu! beatmap collections",
+  "version": "1.0.9",
+  "description": "A desktop manager for syncing osu!lazer collections and restoring beatmaps",
   "author": "Riandre",
   "private": true,
   "type": "module",
