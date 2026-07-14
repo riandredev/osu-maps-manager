@@ -9,7 +9,14 @@ export type PushResult = {
   committed: boolean;
 };
 
-export function prepareForPush(cwd = root): { pulled: boolean } {
+export type PrepareForPushResult = {
+  pulled: boolean;
+  preservedManagedChanges: boolean;
+};
+
+const managedLibraryFiles = new Set(['beatmaps.json', 'README.md']);
+
+export function prepareForPush(cwd = root): PrepareForPushResult {
   const branch = requiredGitOutput(['branch', '--show-current'], cwd);
   runGit(['fetch', 'origin', branch], cwd);
   const [ahead = 0, behind = 0] = requiredGitOutput(
@@ -23,15 +30,27 @@ export function prepareForPush(cwd = root): { pulled: boolean } {
       `Local ${branch} and origin/${branch} have diverged (${ahead} local, ${behind} remote commits). Resolve the Git history in the library folder before syncing again.`,
     );
   }
-  if (behind === 0) return { pulled: false };
-  const changes = requiredGitOutput(['status', '--porcelain'], cwd);
+  if (behind === 0) return { pulled: false, preservedManagedChanges: false };
+  const changes = rawGitOutput(['status', '--porcelain'], cwd).trimEnd();
+  let preservedManagedChanges = false;
   if (changes) {
-    throw new Error(
-      `origin/${branch} has ${behind} newer commit${behind === 1 ? '' : 's'}, but the library has uncommitted changes. Commit or discard them before syncing again.`,
-    );
+    const changedPaths = changes.split(/\r?\n/).map(statusPath);
+    const unmanagedPaths = changedPaths.filter((file) => !managedLibraryFiles.has(file));
+    if (unmanagedPaths.length) {
+      throw new Error(
+        `origin/${branch} has ${behind} newer commit${behind === 1 ? '' : 's'}, and the library contains changes the app does not manage: ${unmanagedPaths.join(', ')}. Commit or discard those files before syncing again.`,
+      );
+    }
+
+    // The caller keeps the parsed local manifest in memory. Restore only the
+    // app-owned generated files so Git can fast-forward, then the caller can
+    // merge that manifest with the newly pulled remote version and regenerate
+    // both files without losing a previous local-only sync.
+    runGit(['restore', '--staged', '--worktree', '--', ...managedLibraryFiles], cwd);
+    preservedManagedChanges = true;
   }
   runGit(['pull', '--ff-only', 'origin', branch], cwd);
-  return { pulled: true };
+  return { pulled: true, preservedManagedChanges };
 }
 
 export function commitAndPush(message: string, cwd = root): PushResult {
@@ -116,10 +135,22 @@ function requiredGitOutput(args: string[], cwd: string): string {
   return result.stdout.trim();
 }
 
+function rawGitOutput(args: string[], cwd: string): string {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
+  if (result.status !== 0) throwGitError(args, result.status, result.stderr, result.stdout);
+  return result.stdout;
+}
+
 function runGit(args: string[], cwd: string): string {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
   if (result.status !== 0) throwGitError(args, result.status, result.stderr, result.stdout);
   return `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+}
+
+function statusPath(line: string): string {
+  const pathValue = line.slice(3).trim();
+  const renamedPath = pathValue.includes(' -> ') ? pathValue.split(' -> ').at(-1)! : pathValue;
+  return renamedPath.replace(/^"|"$/g, '').replaceAll('\\', '/');
 }
 
 function throwGitError(

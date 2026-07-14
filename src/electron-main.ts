@@ -142,13 +142,21 @@ ipcMain.handle(
   async (_event, options: { names?: string[]; push?: boolean } | boolean) => {
     const normalised = typeof options === 'boolean' ? { names: ['repo'], push: options } : options;
     const names = normalised.names?.length ? normalised.names : ['repo'];
+    let localManifest = await readLibraryManifest();
     if (normalised.push) {
       if (!(await exists(path.join(libraryRoot, '.git')))) {
         throw new Error('The selected library folder is not a Git repository, so it cannot push.');
       }
-      prepareForPush(libraryRoot);
+      const preparation = prepareForPush(libraryRoot);
+      if (preparation.preservedManagedChanges) {
+        const remoteManifest = await readLibraryManifest();
+        mergeBeatmapsets(remoteManifest, localManifest.beatmapsets);
+        localManifest = remoteManifest;
+      } else if (preparation.pulled) {
+        localManifest = await readLibraryManifest();
+      }
     }
-    const manifest = await readLibraryManifest();
+    const manifest = localManifest;
     const collections = await readLazerCollections();
     const selected = collections.filter((collection) =>
       names.some((name) => name.toLocaleLowerCase() === collection.name.toLocaleLowerCase()),

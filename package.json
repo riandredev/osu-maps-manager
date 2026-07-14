@@ -1,6 +1,6 @@
 {
   "name": "@riandredev/osu-maps",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A desktop manager for syncing osu!lazer collections and restoring beatmaps",
   "author": "Riandre",
   "private": true,

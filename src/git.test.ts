@@ -70,8 +70,53 @@ describe('Git synchronization', () => {
     git(['commit', '-m', 'Remote update'], other);
     git(['push'], other);
 
-    expect(prepareForPush(library)).toEqual({ pulled: true });
+    expect(prepareForPush(library)).toEqual({
+      pulled: true,
+      preservedManagedChanges: false,
+    });
     expect(git(['rev-parse', 'HEAD'], library)).toBe(git(['rev-parse', 'HEAD'], other));
+  });
+
+  it('fast-forwards while preserving app-managed library changes for reconciliation', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'osu-maps-reconcile-'));
+    temporaryDirectories.push(directory);
+    const remote = path.join(directory, 'remote.git');
+    const library = path.join(directory, 'library');
+    const other = path.join(directory, 'other');
+
+    git(['init', '--bare', remote], directory);
+    git(['init', '--initial-branch=main', library], directory);
+    configureIdentity(library);
+    await writeFile(path.join(library, 'beatmaps.json'), '{"version":1,"beatmapsets":[]}\n');
+    await writeFile(path.join(library, 'README.md'), '# Library\n');
+    git(['add', '.'], library);
+    git(['commit', '-m', 'Initial library'], library);
+    git(['remote', 'add', 'origin', remote], library);
+    git(['push', '--set-upstream', 'origin', 'main'], library);
+
+    await writeFile(
+      path.join(library, 'beatmaps.json'),
+      '{"version":1,"beatmapsets":[{"id":1,"artist":"Local","title":"Map","collections":["Favourite"]}]}\n',
+    );
+    await writeFile(path.join(library, 'README.md'), '# Locally generated library\n');
+
+    git(['clone', '--branch', 'main', remote, other], directory);
+    configureIdentity(other);
+    await writeFile(path.join(other, 'README.md'), '# Remote application update\n');
+    git(['add', 'README.md'], other);
+    git(['commit', '-m', 'Remote update'], other);
+    git(['push'], other);
+
+    expect(prepareForPush(library)).toEqual({
+      pulled: true,
+      preservedManagedChanges: true,
+    });
+    expect(
+      await import('node:fs/promises').then((fs) =>
+        fs.readFile(path.join(library, 'README.md'), 'utf8'),
+      ),
+    ).toMatch(/^# Remote application update\r?\n$/);
+    expect(git(['status', '--porcelain'], library)).toBe('');
   });
 });
 
